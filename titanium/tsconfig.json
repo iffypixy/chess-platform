@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "lib": ["DOM", "ESNext"],
+    "noEmit": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "baseUrl": "./",
+    "paths": {}
+  },
+  "include": ["./src/**/*", "./typings/**/*"],
+  "exclude": ["node_modules", "./**/*.spec.ts"]
+}
