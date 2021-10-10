@@ -10,7 +10,7 @@ import {
 import * as bcrypt from "bcryptjs";
 
 import {UserService, UserPublicData} from "@modules/user";
-import {SessionStorage} from "@typings/";
+import {SessionData} from "@typings/";
 import {LoginDto, RegisterDto} from "./dtos";
 import {IsAuthenticatedGuard} from "./guards";
 
@@ -21,7 +21,7 @@ export class AuthController {
   @Post("register")
   async register(
     @Body() {username, password}: RegisterDto,
-    @Session() session: SessionStorage,
+    @Session() session: SessionData,
   ): Promise<{credentials: UserPublicData}> {
     const existed = await this.userService.findByUsername(username);
 
@@ -35,17 +35,17 @@ export class AuthController {
 
     const user = await this.userService.create({username, password: hashed});
 
-    session.user = user.public;
+    session.user = user;
 
     return {
-      credentials: session.user,
+      credentials: user.public,
     };
   }
 
   @Post("login")
   async login(
     @Body() dto: LoginDto,
-    @Session() session: SessionStorage,
+    @Session() session: SessionData,
   ): Promise<{credentials: UserPublicData}> {
     const user = await this.userService.findByUsername(dto.username);
 
@@ -55,24 +55,26 @@ export class AuthController {
 
     if (!doPasswordsMatch) throw new BadRequestException("Invalid credentials");
 
-    session.user = user.public;
+    session.user = user;
 
     return {
-      credentials: session.user,
+      credentials: user.public,
     };
   }
 
   @UseGuards(IsAuthenticatedGuard)
   @Get("credentials")
-  async getCredentials(@Session() session: SessionStorage) {
+  async getCredentials(@Session() session: SessionData) {
+    const user = this.userService.hydrate(session.user);
+
     return {
-      credentials: session.user,
+      credentials: user.public,
     };
   }
 
   @UseGuards(IsAuthenticatedGuard)
   @Post("logout")
-  async logout(@Session() session: SessionStorage) {
+  async logout(@Session() session: SessionData) {
     session.destroy((error) => {
       if (error) throw error;
     });

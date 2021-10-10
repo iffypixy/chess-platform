@@ -1,22 +1,12 @@
 import {Prop, Schema, SchemaFactory, raw} from "@nestjs/mongoose";
-import {Document} from "mongoose";
+import {Document, Model, Types} from "mongoose";
 
 interface ControlMode {
   rating: number;
   calibrated: boolean;
 }
-
-export interface UserPublicData {
-  id: string;
-  username: string;
-  bullet: ControlMode;
-  blitz: ControlMode;
-  rapid: ControlMode;
-  classic: ControlMode;
-}
-
 @Schema({versionKey: false})
-export class User {
+export class UserModel extends Model {
   @Prop({
     type: String,
     required: true,
@@ -99,20 +89,39 @@ export class User {
   classic: ControlMode;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const UserSchema = SchemaFactory.createForClass(UserModel);
+
+export interface UserCreationAttributes {
+  username: string;
+  password: string;
+}
+
+export interface UserPublicData {
+  id: string;
+  username: string;
+  bullet: ControlMode;
+  blitz: ControlMode;
+  rapid: ControlMode;
+  classic: ControlMode;
+}
+
+export interface UserData {
+  _id: Types.ObjectId;
+  username: string;
+  password: string;
+  bullet: ControlMode;
+  blitz: ControlMode;
+  rapid: ControlMode;
+  classic: ControlMode;
+}
+
+export type UserDocument = UserData &
+  Document & {
+    public: UserPublicData;
+  };
 
 UserSchema.virtual("public").get(function (this: UserDocument): UserPublicData {
   const {_id, password, ...props} = this.toObject();
 
   return {id: _id, ...props};
 });
-
-export type UserDocument = User &
-  Document & {
-    public: UserPublicData;
-  };
-
-export interface UserCreationAttributes {
-  username: string;
-  password: string;
-}

@@ -1,7 +1,8 @@
 export {
   UserSchema,
-  User,
+  UserModel,
   UserDocument,
   UserCreationAttributes,
   UserPublicData,
+  UserData,
 } from "./user.schema";

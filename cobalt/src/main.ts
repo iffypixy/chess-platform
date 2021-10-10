@@ -1,10 +1,10 @@
 import {NestFactory} from "@nestjs/core";
+import {ValidationPipe} from "@nestjs/common";
 import * as session from "express-session";
 import * as connectRedis from "connect-redis";
 import * as redis from "redis";
 
 import {AppModule} from "./app.module";
-import {ValidationPipe} from "@nestjs/common";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

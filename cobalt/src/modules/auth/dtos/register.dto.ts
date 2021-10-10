@@ -1,10 +1,10 @@
 import {IsAlphanumeric, IsString, Length} from "class-validator";
 
 export class RegisterDto {
-  // @IsAlphanumeric("en-US", {
-  //   message: "Username can contain only letters and numbers",
-  // })
-  // @Length(4, 20)
+  @IsAlphanumeric("en-US", {
+    message: "Username can contain only letters and numbers",
+  })
+  @Length(4, 20)
   username: string;
 
   @IsString({
