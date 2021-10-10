@@ -6,7 +6,7 @@ interface ControlMode {
   calibrated: boolean;
 }
 @Schema({versionKey: false})
-export class UserModel extends Model {
+export class User extends Model {
   @Prop({
     type: String,
     required: true,
@@ -89,8 +89,7 @@ export class UserModel extends Model {
   classic: ControlMode;
 }
 
-export const UserSchema = SchemaFactory.createForClass(UserModel);
-
+export const UserSchema = SchemaFactory.createForClass(User);
 export interface UserCreationAttributes {
   username: string;
   password: string;
@@ -121,7 +120,7 @@ export type UserDocument = UserData &
   };
 
 UserSchema.virtual("public").get(function (this: UserDocument): UserPublicData {
-  const {_id, password, ...props} = this.toObject();
+  const {_id, username, bullet, blitz, rapid, classic} = this;
 
-  return {id: _id, ...props};
+  return {id: _id, username, bullet, blitz, rapid, classic};
 });

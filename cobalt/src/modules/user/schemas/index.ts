@@ -1,6 +1,6 @@
 export {
   UserSchema,
-  UserModel,
+  User,
   UserDocument,
   UserCreationAttributes,
   UserPublicData,
