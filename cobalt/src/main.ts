@@ -18,7 +18,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({transform: true}));
   app.useWebSocketAdapter(new AuthIoAdapter(app));
 
-  await app.listen(8000);
+  await app.listen(process.env.PORT);
 }
 
 bootstrap();
