@@ -19,7 +19,8 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "@modules/*": ["./src/modules", "./src/modules/*"],
-      "@typings/*": ["./src/typings", "./src/typings/*"]
+      "@typings/*": ["./src/typings", "./src/typings/*"],
+      "@lib/*": ["./src/lib", "./src/lib/*"]
     }
   }
 }

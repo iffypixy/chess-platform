@@ -1,38 +1,24 @@
 import {NestFactory} from "@nestjs/core";
 import {ValidationPipe} from "@nestjs/common";
-import * as session from "express-session";
-import * as connectRedis from "connect-redis";
-import * as redis from "redis";
 
+import {AuthIoAdapter} from "@lib/adapters";
+import {constants} from "@lib/constants";
+import {session} from "@lib/sessions/index";
 import {AppModule} from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  const RedisStore = connectRedis(session);
-
-  const redisClient = redis.createClient({
-    host: "localhost",
-    port: 6379,
+  const app = await NestFactory.create(AppModule, {
+    cors: {
+      credentials: true,
+      origin: constants.ORIGIN,
+    },
   });
 
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET,
-      resave: false,
-      saveUninitialized: false,
-      rolling: true,
-      cookie: {
-        maxAge: 2629800000,
-        httpOnly: true,
-      },
-      store: new RedisStore({client: redisClient}),
-    }),
-  );
-
+  app.use(session());
   app.useGlobalPipes(new ValidationPipe({transform: true}));
+  app.useWebSocketAdapter(new AuthIoAdapter(app));
 
-  await app.listen(3000);
+  await app.listen(8000);
 }
 
 bootstrap();

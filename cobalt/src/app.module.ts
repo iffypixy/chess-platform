@@ -5,8 +5,7 @@ import {ConfigModule, ConfigService} from "@nestjs/config";
 import {AuthModule} from "@modules/auth";
 import {UserModule} from "@modules/user";
 import {GameModule} from "@modules/game";
-
-import {databaseConfig} from "./config";
+import {databaseConfig, sessionConfig} from "./config";
 
 const env = process.env.NODE_ENV;
 
@@ -14,7 +13,7 @@ const env = process.env.NODE_ENV;
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig],
+      load: [databaseConfig, sessionConfig],
       envFilePath: !!env ? `.env.${env}` : ".env.development",
     }),
     MongooseModule.forRootAsync({
