@@ -5,6 +5,7 @@ import {ConfigModule, ConfigService} from "@nestjs/config";
 import {AuthModule} from "@modules/auth";
 import {UserModule} from "@modules/user";
 import {ChessModule} from "@modules/chess";
+import {SocketIoModule} from "@lib/socket.io";
 import {databaseConfig} from "./config";
 
 const env = process.env.NODE_ENV;
@@ -24,6 +25,7 @@ const env = process.env.NODE_ENV;
         useCreateIndex: true,
       }),
     }),
+    SocketIoModule,
     UserModule,
     AuthModule,
     ChessModule,

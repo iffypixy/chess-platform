@@ -15,6 +15,8 @@ import {Types} from "mongoose";
 import {UserData, UserService} from "@modules/user";
 import {constants} from "@lib/constants";
 import {redisClient} from "@lib/redis";
+import {SocketIoService} from "@lib/socket.io";
+
 import {ChessService} from "./chess.service";
 import {ChessTimeControl} from "./typings";
 import {ChessEngine} from "./lib/classes";
@@ -62,7 +64,11 @@ const clientEvents = {
   },
 })
 export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
-  constructor(private readonly userService: UserService, private readonly chessService: ChessService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly chessService: ChessService,
+    private readonly socketIoService: SocketIoService,
+  ) {}
 
   @WebSocketServer()
   private readonly server: Server;
@@ -104,7 +110,10 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
 
         redisClient.set(`game:${id}`, JSON.stringify(match));
 
-        const sockets = [...this.getSocketsByUserId(user._id), ...this.getSocketsByUserId(opponent.user._id)];
+        const sockets = [
+          ...this.socketIoService.getSocketsByUserId(user._id),
+          ...this.socketIoService.getSocketsByUserId(opponent.user._id),
+        ];
 
         this.server.to(sockets).emit(clientEvents.MATCH_FOUND, {
           id,
@@ -178,7 +187,10 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
     const player = isWhite ? white : black;
     const opponent = isWhite ? black : white;
 
-    const sockets = [...this.getSocketsByUserId(player.id), ...this.getSocketsByUserId(opponent.id)];
+    const sockets = [
+      ...this.socketIoService.getSocketsByUserId(player.id),
+      ...this.socketIoService.getSocketsByUserId(opponent.id),
+    ];
 
     if (!engine.isInitiated) {
       this.server.to(sockets).emit(clientEvents.MOVE, {
@@ -219,13 +231,13 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
         category,
       });
 
-      this.server.to(this.getSocketsByUserId(user._id)).emit(clientEvents.VICTORY, {
+      this.server.to(this.socketIoService.getSocketsByUserId(user._id)).emit(clientEvents.VICTORY, {
         rating: player.rating + change,
         gain: change,
         clock: engine.clock,
       });
 
-      this.server.to(this.getSocketsByUserId(opponent.id)).emit(clientEvents.LOSS, {
+      this.server.to(this.socketIoService.getSocketsByUserId(opponent.id)).emit(clientEvents.LOSS, {
         rating: opponent.rating - change,
         loss: -change,
         clock: engine.clock,
@@ -250,13 +262,13 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
         category,
       });
 
-      this.server.to(this.getSocketsByUserId(underdog.id)).emit(clientEvents.DRAW, {
+      this.server.to(this.socketIoService.getSocketsByUserId(underdog.id)).emit(clientEvents.DRAW, {
         rating: underdog.rating + change,
         gain: change,
         clock: engine.clock,
       });
 
-      this.server.to(this.getSocketsByUserId(favourite.id)).emit(clientEvents.DRAW, {
+      this.server.to(this.socketIoService.getSocketsByUserId(favourite.id)).emit(clientEvents.DRAW, {
         rating: favourite.rating - change,
         loss: -change,
         clock: engine.clock,
@@ -274,15 +286,5 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
 
     engine.startClockTimer(handleVictory);
-  }
-
-  private getSocketsByUserId(id: Types.ObjectId): string[] {
-    const sockets: string[] = [];
-
-    for (const socket of this.server.sockets.sockets.values() as IterableIterator<Socket>) {
-      if (socket.request.session.user._id.equals(id)) sockets.push(socket.id);
-    }
-
-    return sockets;
   }
 }
