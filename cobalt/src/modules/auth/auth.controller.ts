@@ -1,16 +1,8 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Post,
-  Session,
-  UseGuards,
-} from "@nestjs/common";
+import {BadRequestException, Body, Controller, Get, Post, Session, UseGuards} from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
+import {SessionData} from "express-session";
 
 import {UserService, UserPublicData} from "@modules/user";
-import {SessionData} from "@typings/";
 import {LoginDto, RegisterDto} from "./dtos";
 import {IsAuthenticatedGuard} from "./guards";
 
@@ -25,10 +17,7 @@ export class AuthController {
   ): Promise<{credentials: UserPublicData}> {
     const existed = await this.userService.findByUsername(username);
 
-    if (existed)
-      throw new BadRequestException(
-        "There is already a user with the same username",
-      );
+    if (existed) throw new BadRequestException("There is already a user with the same username");
 
     const salt = await bcrypt.genSalt(10);
     const hashed = await bcrypt.hash(password, salt);
@@ -43,10 +32,7 @@ export class AuthController {
   }
 
   @Post("login")
-  async login(
-    @Body() dto: LoginDto,
-    @Session() session: SessionData,
-  ): Promise<{credentials: UserPublicData}> {
+  async login(@Body() dto: LoginDto, @Session() session: SessionData): Promise<{credentials: UserPublicData}> {
     const user = await this.userService.findByUsername(dto.username);
 
     if (!user) throw new BadRequestException("Invalid credentials");
@@ -75,6 +61,8 @@ export class AuthController {
   @UseGuards(IsAuthenticatedGuard)
   @Post("logout")
   async logout(@Session() session: SessionData) {
+    console.log(session);
+
     session.destroy((error) => {
       if (error) throw error;
     });

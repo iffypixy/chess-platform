@@ -1,6 +1,5 @@
 import {CanActivate, ExecutionContext, Injectable} from "@nestjs/common";
-
-import {SessionData} from "@typings/";
+import {SessionData} from "express-session";
 
 @Injectable()
 export class IsAuthenticatedGuard implements CanActivate {

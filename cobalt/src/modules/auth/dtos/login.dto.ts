@@ -1,8 +1,8 @@
-import {IsString} from "class-validator";
+import {IsAlphanumeric, IsString} from "class-validator";
 
 export class LoginDto {
-  @IsString({
-    message: "Username must be type of string",
+  @IsAlphanumeric("en-US", {
+    message: "Username must be type of alphanumeric",
   })
   username: string;
 

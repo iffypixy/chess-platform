@@ -2,11 +2,11 @@ import {Prop, Schema, SchemaFactory} from "@nestjs/mongoose";
 import {Types, Document} from "mongoose";
 
 import {UserDocument, User, UserPublicData} from "@modules/user";
-import {CHESS_CATEGORIES} from "../lib";
+import {CHESS_CATEGORIES} from "../lib/constants/index";
 import {ChessCategory} from "../typings";
 
 @Schema({versionKey: false, timestamps: true})
-export class Game {
+export class ChessGame {
   @Prop({
     type: Types.ObjectId,
     ref: User.name,
@@ -30,12 +30,7 @@ export class Game {
   @Prop({
     type: String,
     required: true,
-    enum: [
-      CHESS_CATEGORIES.BULLET,
-      CHESS_CATEGORIES.BLITZ,
-      CHESS_CATEGORIES.RAPID,
-      CHESS_CATEGORIES.CLASSICAL,
-    ],
+    enum: [CHESS_CATEGORIES.BULLET, CHESS_CATEGORIES.BLITZ, CHESS_CATEGORIES.RAPID, CHESS_CATEGORIES.CLASSICAL],
   })
   category: ChessCategory;
 
@@ -65,9 +60,9 @@ export class Game {
   winner: Types.ObjectId;
 }
 
-export const GameSchema = SchemaFactory.createForClass(Game);
+export const ChessGameSchema = SchemaFactory.createForClass(ChessGame);
 
-export interface GameData {
+export interface ChessGameData {
   _id: Types.ObjectId;
   white: UserDocument;
   black: UserDocument;
@@ -81,7 +76,7 @@ export interface GameData {
   updatedAt: Date;
 }
 
-export interface GamePublicData {
+export interface ChessGamePublicData {
   id: string;
   white: UserPublicData;
   black: UserPublicData;
@@ -93,14 +88,13 @@ export interface GamePublicData {
   increment: number;
 }
 
-export type GameDocument = GameData &
+export type ChessGameDocument = ChessGameData &
   Document & {
-    public: GamePublicData;
+    public: ChessGamePublicData;
   };
 
-GameSchema.virtual("public").get(function (this: GameDocument): GamePublicData {
-  const {_id, white, black, winner, pgn, category, delay, time, increment} =
-    this;
+ChessGameSchema.virtual("public").get(function (this: ChessGameDocument): ChessGamePublicData {
+  const {_id, white, black, winner, pgn, category, delay, time, increment} = this;
 
   return {
     id: _id,
@@ -115,7 +109,7 @@ GameSchema.virtual("public").get(function (this: GameDocument): GamePublicData {
   };
 });
 
-export interface GameCreationAttributes {
+export interface ChessGameCreationAttributes {
   white: Types.ObjectId;
   black: Types.ObjectId;
   pgn: string;

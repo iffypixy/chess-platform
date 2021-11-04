@@ -3,7 +3,7 @@ import {ValidationPipe} from "@nestjs/common";
 
 import {AuthIoAdapter} from "@lib/adapters";
 import {constants} from "@lib/constants";
-import {session} from "@lib/sessions/index";
+import {session} from "@lib/session";
 import {AppModule} from "./app.module";
 
 async function bootstrap() {

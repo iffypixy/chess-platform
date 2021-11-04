@@ -1,13 +1,6 @@
 import {Injectable} from "@nestjs/common";
 import {InjectModel} from "@nestjs/mongoose";
-import {
-  FilterQuery,
-  Model,
-  QueryOptions,
-  Types,
-  UpdateQuery,
-  UpdateWriteOpResult,
-} from "mongoose";
+import {FilterQuery, Model, QueryOptions, Types, UpdateQuery, UpdateWriteOpResult} from "mongoose";
 
 import {User, UserDocument, UserData, UserCreationAttributes} from "./schemas";
 

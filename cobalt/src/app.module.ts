@@ -4,7 +4,7 @@ import {ConfigModule, ConfigService} from "@nestjs/config";
 
 import {AuthModule} from "@modules/auth";
 import {UserModule} from "@modules/user";
-import {GameModule} from "@modules/game";
+import {ChessModule} from "@modules/chess";
 import {databaseConfig} from "./config";
 
 const env = process.env.NODE_ENV;
@@ -26,7 +26,7 @@ const env = process.env.NODE_ENV;
     }),
     UserModule,
     AuthModule,
-    GameModule,
+    ChessModule,
   ],
 })
 export class AppModule {}
