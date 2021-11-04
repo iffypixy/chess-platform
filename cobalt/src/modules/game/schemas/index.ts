@@ -4,4 +4,5 @@ export {
   Game,
   GameSchema,
   GamePublicData,
+  GameCreationAttributes,
 } from "./game.schema";

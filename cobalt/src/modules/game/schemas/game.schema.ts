@@ -2,7 +2,8 @@ import {Prop, Schema, SchemaFactory} from "@nestjs/mongoose";
 import {Types, Document} from "mongoose";
 
 import {UserDocument, User, UserPublicData} from "@modules/user";
-import {categories, GameCategory} from "../lib";
+import {CHESS_CATEGORIES} from "../lib";
+import {ChessCategory} from "../typings";
 
 @Schema({versionKey: false, timestamps: true})
 export class Game {
@@ -11,14 +12,14 @@ export class Game {
     ref: User.name,
     required: true,
   })
-  white: UserDocument;
+  white: Types.ObjectId;
 
   @Prop({
     type: Types.ObjectId,
     ref: User.name,
     required: true,
   })
-  black: UserDocument;
+  black: Types.ObjectId;
 
   @Prop({
     type: String,
@@ -30,13 +31,13 @@ export class Game {
     type: String,
     required: true,
     enum: [
-      categories.bullet,
-      categories.blitz,
-      categories.rapid,
-      categories.classic,
+      CHESS_CATEGORIES.BULLET,
+      CHESS_CATEGORIES.BLITZ,
+      CHESS_CATEGORIES.RAPID,
+      CHESS_CATEGORIES.CLASSICAL,
     ],
   })
-  category: GameCategory;
+  category: ChessCategory;
 
   @Prop({
     type: Number,
@@ -58,11 +59,13 @@ export class Game {
 
   @Prop({
     type: Types.ObjectId,
-    ref: "users",
+    ref: User.name,
     required: true,
   })
-  winner: UserDocument;
+  winner: Types.ObjectId;
 }
+
+export const GameSchema = SchemaFactory.createForClass(Game);
 
 export interface GameData {
   _id: Types.ObjectId;
@@ -70,7 +73,7 @@ export interface GameData {
   black: UserDocument;
   winner: UserDocument;
   pgn: string;
-  category: GameCategory;
+  category: ChessCategory;
   delay: number;
   time: number;
   increment: number;
@@ -84,7 +87,7 @@ export interface GamePublicData {
   black: UserPublicData;
   winner: UserPublicData;
   pgn: string;
-  category: GameCategory;
+  category: ChessCategory;
   delay: number;
   time: number;
   increment: number;
@@ -94,8 +97,6 @@ export type GameDocument = GameData &
   Document & {
     public: GamePublicData;
   };
-
-export const GameSchema = SchemaFactory.createForClass(Game);
 
 GameSchema.virtual("public").get(function (this: GameDocument): GamePublicData {
   const {_id, white, black, winner, pgn, category, delay, time, increment} =
@@ -113,3 +114,14 @@ GameSchema.virtual("public").get(function (this: GameDocument): GamePublicData {
     increment,
   };
 });
+
+export interface GameCreationAttributes {
+  white: Types.ObjectId;
+  black: Types.ObjectId;
+  pgn: string;
+  delay: number;
+  increment: number;
+  time: number;
+  category: ChessCategory;
+  winner: Types.ObjectId;
+}

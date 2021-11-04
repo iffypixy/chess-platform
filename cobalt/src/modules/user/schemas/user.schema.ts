@@ -90,10 +90,6 @@ export class User extends Model {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-export interface UserCreationAttributes {
-  username: string;
-  password: string;
-}
 
 export interface UserPublicData {
   id: string;
@@ -124,3 +120,8 @@ UserSchema.virtual("public").get(function (this: UserDocument): UserPublicData {
 
   return {id: _id, username, bullet, blitz, rapid, classic};
 });
+
+export interface UserCreationAttributes {
+  username: string;
+  password: string;
+}
