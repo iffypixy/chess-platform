@@ -8,14 +8,14 @@ export class ChessController {
   constructor(private readonly chessService: ChessService) {}
 
   @Get("random")
-  async getRandom(): Promise<{ChessGame: ChessGamePublicData}> {
+  async getRandom(): Promise<{game: ChessGamePublicData}> {
     const amount = await this.chessService.count();
     const random = Math.floor(Math.random() * amount);
 
-    const ChessGame = await this.chessService.findOne({}, {skip: random});
+    const game = await this.chessService.findOne({}, {skip: random});
 
     return {
-      ChessGame: ChessGame.public,
+      game: game.public,
     };
   }
 }

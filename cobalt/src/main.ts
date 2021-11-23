@@ -1,9 +1,10 @@
 import {NestFactory} from "@nestjs/core";
 import {ValidationPipe} from "@nestjs/common";
 
-import {AuthIoAdapter} from "@lib/adapters";
+import {RedisIoAdapter} from "@lib/adapters";
 import {constants} from "@lib/constants";
 import {session} from "@lib/session";
+import {Cluster} from "@lib/cluster";
 import {AppModule} from "./app.module";
 
 async function bootstrap() {
@@ -16,9 +17,9 @@ async function bootstrap() {
 
   app.use(session());
   app.useGlobalPipes(new ValidationPipe({transform: true}));
-  app.useWebSocketAdapter(new AuthIoAdapter(app));
+  app.useWebSocketAdapter(new RedisIoAdapter(app));
 
   await app.listen(process.env.PORT);
 }
 
-bootstrap();
+Cluster.register(bootstrap);

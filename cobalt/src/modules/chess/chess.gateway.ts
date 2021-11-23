@@ -6,46 +6,40 @@ import {
   OnGatewayDisconnect,
   OnGatewayInit,
   MessageBody,
+  WsException,
 } from "@nestjs/websockets";
-import {BadRequestException} from "@nestjs/common";
 import {Server, Socket} from "socket.io";
 import {nanoid} from "nanoid";
-import {Types} from "mongoose";
+import {Chess} from "chess.js";
 
 import {UserData, UserService} from "@modules/user";
 import {constants} from "@lib/constants";
-import {redisClient} from "@lib/redis";
 import {SocketIoService} from "@lib/socket.io";
-
+import {redis} from "@lib/constants/redis";
+import {ChessControl, ChessEntity, ChessPlayer} from "./typings";
 import {ChessService} from "./chess.service";
-import {ChessTimeControl} from "./typings";
-import {ChessEngine} from "./lib/classes";
-import {DEFAULT_GAIN, MAX_DIFF_IN_RATING, MAX_WAIT_TIME} from "./lib/constants";
+import {
+  AcceptDrawDto,
+  DeclineDrawDto,
+  JoinQueueDto,
+  MakeMoveDto,
+  ResignDto,
+  OfferDrawDto,
+  PremoveDto,
+} from "./dtos/gateways";
+import {DEFAULT_FEN, DEFAULT_GAIN, MAX_DIFF_IN_RATING, MAX_WAIT_TIME} from "./lib/constants";
 import {timeControlToCategory} from "./lib/helpers";
-import {JoinQueueDto, MakeMoveDto} from "./dtos/gateways";
-
-interface ChessGameEntityPlayer {
-  id: Types.ObjectId;
-  rating: number;
-}
-
-interface ChessGameEntity {
-  id: string;
-  engine: ChessEngine;
-  white: ChessGameEntityPlayer;
-  black: ChessGameEntityPlayer;
-}
-
-interface QueueEntity {
-  user: UserData;
-  start: number;
-  rating: number;
-  control: ChessTimeControl;
-}
+import {NextFunction, Request, Response} from "express";
+import {session} from "@lib/session";
 
 const serverEvents = {
   JOIN_QUEUE: "join-queue",
   MAKE_MOVE: "make-move",
+  RESIGN: "resign",
+  OFFER_DRAW: "offer-draw",
+  ACCEPT_DRAW: "accept-draw",
+  DECLINE_DRAW: "decline-draw",
+  PREMOVE: "premove",
 };
 
 const clientEvents = {
@@ -55,7 +49,18 @@ const clientEvents = {
   VICTORY: "victory",
   LOSS: "loss",
   ABORT: "abort",
+  DRAW_OFFER: "draw-offer",
+  DRAW_OFFER_DECLINE: "draw-offer-decline",
 };
+
+interface QueueEntity {
+  user: UserData;
+  start: number;
+  rating: number;
+  control: ChessControl;
+}
+
+let queue: QueueEntity[] = [];
 
 @WebSocketGateway({
   cors: {
@@ -73,17 +78,18 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
   @WebSocketServer()
   private readonly server: Server;
 
-  private queue: QueueEntity[] = [];
-  private games: ChessGameEntity[] = [];
-
   private queueInterval: NodeJS.Timer | null = null;
 
   afterInit(): void {
-    this.queueInterval = setInterval(async () => {
-      for (let i = 0; i < this.queue.length; i++) {
-        const {user, control, rating, start} = this.queue[i];
+    this.server.use((socket: Socket, next: NextFunction) => {
+      session()(socket.request as unknown as Request, {} as Response, next);
+    });
 
-        const opponent = this.queue
+    this.queueInterval = setInterval(() => {
+      queue.forEach((entity) => {
+        const {user, control, rating, start} = entity;
+
+        const opponent = queue
           .filter(
             (entity) =>
               !user._id.equals(entity.user._id) &&
@@ -94,60 +100,77 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
           .sort((a, b) => Math.abs(Math.abs(rating - a.rating) - Math.abs(rating - b.rating)))[0];
 
         const isOpponentAcceptable =
-          Math.abs(rating - opponent.rating) <= MAX_DIFF_IN_RATING || Date.now() - start <= MAX_WAIT_TIME;
+          Math.abs(rating - opponent.rating) <= MAX_DIFF_IN_RATING || Date.now() - start >= MAX_WAIT_TIME;
 
-        if (!isOpponentAcceptable) continue;
+        if (!isOpponentAcceptable) {
+          const id = nanoid();
 
-        const id = nanoid();
+          const game: ChessEntity = {
+            white: {
+              id: user._id,
+              clock: control.time,
+              rating,
+            },
+            black: {
+              id: opponent.user._id,
+              clock: control.time,
+              rating: opponent.rating,
+            },
+            fen: DEFAULT_FEN,
+            pgn: null,
+            premove: null,
+            control,
+            isDrawOffered: false,
+          };
 
-        const engine = new ChessEngine(control);
-        const category = timeControlToCategory(control);
+          redis.set(String(id), JSON.stringify(game));
 
-        const white = {id: user._id, rating: user[category].rating};
-        const black = {id: opponent.user._id, rating: opponent.user[category].rating};
+          const sockets = [
+            ...this.socketIoService.getSocketsByUserId(user._id),
+            ...this.socketIoService.getSocketsByUserId(opponent.user._id),
+          ];
 
-        const match = {id, engine, white, black};
+          this.server.to(sockets).emit(clientEvents.MATCH_FOUND, {
+            game: {
+              white: {
+                user: this.userService.hydrate(user).public,
+                clock: control.time,
+                rating,
+              },
+              black: {
+                user: this.userService.hydrate(opponent.user).public,
+                clock: control.time,
+                rating: opponent.rating,
+              },
+              control,
+            },
+          });
 
-        redisClient.set(`game:${id}`, JSON.stringify(match));
+          //this.managerService.startClockTimer({gameId: id});
 
-        const sockets = [
-          ...this.socketIoService.getSocketsByUserId(user._id),
-          ...this.socketIoService.getSocketsByUserId(opponent.user._id),
-        ];
-
-        this.server.to(sockets).emit(clientEvents.MATCH_FOUND, {
-          id,
-          control,
-          white: this.userService.hydrate(user).public,
-          black: this.userService.hydrate(opponent.user).public,
-        });
-
-        engine.startAbortTimer(() => {
-          this.server.to(sockets).emit(clientEvents.ABORT);
-        });
-
-        this.queue = this.queue.filter(({user}) => !user._id.equals(user._id) || !user._id.equals(opponent.user._id));
-      }
+          queue = queue.filter(({user: {_id}}) => !user._id.equals(_id) || !opponent.user._id.equals(_id));
+        }
+      });
     }, 1000);
   }
 
   handleDisconnect(socket: Socket): void {
     const {user} = socket.request.session;
 
-    this.queue = this.queue.filter((entity) => user._id.equals(entity.user._id));
+    queue = queue.filter(({user: {_id}}) => user._id.equals(_id));
   }
 
   @SubscribeMessage(serverEvents.JOIN_QUEUE)
   joinQueue(@ConnectedSocket() socket: Socket, body: JoinQueueDto): void {
     const {user} = socket.request.session;
 
-    const control: ChessTimeControl = {
+    const control: ChessControl = {
       delay: body.delay,
       increment: body.increment,
       time: body.time,
     };
 
-    this.queue.push({
+    queue.push({
       user,
       start: Date.now(),
       rating: user[timeControlToCategory(control)].rating,
@@ -155,136 +178,327 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
-  @SubscribeMessage(serverEvents.MAKE_MOVE)
-  async makeMove(@ConnectedSocket() socket: Socket, @MessageBody() body: MakeMoveDto): Promise<void> {
-    const match = redisClient.get(`game:${body.gameId}`) as unknown as string;
+  // @SubscribeMessage(serverEvents.MAKE_MOVE)
+  // async makeMove(@ConnectedSocket() socket: Socket, @MessageBody() body: MakeMoveDto): Promise<void> {
+  //   const {user} = socket.request.session;
 
-    if (!match) throw new BadRequestException("Invalid game");
+  //   const {game} = await this.managerService.validate({
+  //     gameId: body.gameId,
+  //     userId: user._id,
+  //   });
 
-    const {engine, white, black} = JSON.parse(match) as ChessGameEntity;
-    const {turn, control} = engine;
+  //   const engine = new Chess(game.fen);
 
-    const {user} = socket.request.session;
+  //   const turn = engine.turn() === "w" ? "white" : "black";
+  //   const opposite = turn === "white" ? "black" : "white";
 
-    const isWhite = white.id.equals(user._id);
-    const isBlack = black.id.equals(user._id);
+  //   const isWhite = String(user._id) === String(game.white.id);
+  //   const isBlack = String(user._id) === String(game.black.id);
 
-    const isParticipant = isWhite || isBlack;
+  //   const isTurn = (turn === "white" && isWhite) || (turn === "black" && isBlack);
 
-    if (!isParticipant) throw new BadRequestException("Invalid game");
+  //   if (!isTurn) throw new WsException("Not your turn");
 
-    const isTurn = (turn === "white" && isWhite) || (turn === "black" && isBlack);
+  //   const result = engine.move(body.move);
 
-    if (!isTurn) throw new BadRequestException("Not your turn");
+  //   if (!result) throw new WsException("Invalid move");
 
-    const result = engine.makeMove(body.move);
+  //   engine.set_comment(`clk:${game[turn].clock}`);
 
-    if (!result) throw new BadRequestException("Invalid move");
+  //   this.managerService.stopClockTimer({gameId: body.gameId});
 
-    engine.stopAbortTimer();
-    engine.stopClockTimer();
+  //   const sockets = [
+  //     ...this.socketIoService.getSocketsByUserId(game.white.id),
+  //     ...this.socketIoService.getSocketsByUserId(game.black.id),
+  //   ];
 
-    const player = isWhite ? white : black;
-    const opponent = isWhite ? black : white;
+  //   // if (!engine.isInitiated) {
+  //   //   this.server.to(sockets).emit(clientEvents.MOVE, {
+  //   //     move: body.move,
+  //   //     clock: engine.clock,
+  //   //   });
 
-    const sockets = [
-      ...this.socketIoService.getSocketsByUserId(player.id),
-      ...this.socketIoService.getSocketsByUserId(opponent.id),
-    ];
+  //   //   return engine.startAbortTimer(() => {
+  //   //     this.server.to(sockets).emit(clientEvents.ABORT);
+  //   //   });
+  //   // }
 
-    if (!engine.isInitiated) {
-      this.server.to(sockets).emit(clientEvents.MOVE, {
-        move: body.move,
-        clock: engine.clock,
-      });
+  //   game[turn].clock += game.control.increment;
 
-      return engine.startAbortTimer(() => {
-        this.server.to(sockets).emit(clientEvents.ABORT);
-      });
-    }
+  //   const {change} = await this.managerService.handleVictory({game});
 
-    engine.addTime({
-      side: turn,
-      time: control.increment,
-    });
+  //   this.server.to(this.socketIoService.getSocketsByUserId(game[turn].id)).emit(clientEvents.VICTORY, {
+  //     rating: game[turn].rating + change,
+  //     clock: game[turn].clock,
+  //     change,
+  //   });
 
-    const gain = engine.isCheckmate ? DEFAULT_GAIN : 0;
-    const shift = Math.round(Math.abs((player.rating - opponent.rating) / 5));
+  //   this.server.to(this.socketIoService.getSocketsByUserId(game[opposite].id)).emit(clientEvents.LOSS, {
+  //     rating: game[opposite].rating - change,
+  //     clock: game[opposite].clock,
+  //     change: -change,
+  //   });
 
-    const change = gain + shift;
+  //   const handleDraw = async () => {
+  //     const [underdog, favourite] = [player, opponent].sort((a, b) => a.rating - b.rating);
 
-    const category = timeControlToCategory(control);
+  //     await this.userService.updateOne({_id: underdog.id}, {[category]: {rating: underdog.rating + shift}});
+  //     await this.userService.updateOne({_id: favourite.id}, {[category]: {rating: favourite.rating - shift}});
 
-    const handleVictory = async () => {
-      await this.userService.updateOne({_id: player.id}, {[category]: {rating: player.rating + change}});
+  //     await this.chessService.create({
+  //       white: white.id,
+  //       black: black.id,
+  //       increment: control.increment,
+  //       delay: control.delay,
+  //       time: control.time,
+  //       winner: null,
+  //       pgn: engine.pgn,
+  //       category,
+  //     });
 
-      await this.userService.updateOne({_id: opponent.id}, {[category]: {rating: opponent.rating - change}});
+  //     this.server.to(this.socketIoService.getSocketsByUserId(underdog.id)).emit(clientEvents.DRAW, {
+  //       rating: underdog.rating + shift,
+  //       gain: shift,
+  //       clock: engine.clock,
+  //     });
 
-      await this.chessService.create({
-        white: white.id,
-        black: black.id,
-        increment: control.increment,
-        delay: control.delay,
-        time: control.time,
-        winner: user._id,
-        pgn: engine.pgn,
-        category,
-      });
+  //     this.server.to(this.socketIoService.getSocketsByUserId(favourite.id)).emit(clientEvents.DRAW, {
+  //       rating: favourite.rating - shift,
+  //       loss: -shift,
+  //       clock: engine.clock,
+  //     });
+  //   };
 
-      this.server.to(this.socketIoService.getSocketsByUserId(user._id)).emit(clientEvents.VICTORY, {
-        rating: player.rating + change,
-        gain: change,
-        clock: engine.clock,
-      });
+  //   this.server.to(sockets).emit(clientEvents.MOVE, {
+  //     move: body.move,
+  //     clock: engine.clock,
+  //   });
 
-      this.server.to(this.socketIoService.getSocketsByUserId(opponent.id)).emit(clientEvents.LOSS, {
-        rating: opponent.rating - change,
-        loss: -change,
-        clock: engine.clock,
-      });
-    };
+  //   if (engine.in_checkmate()) {
+  //     if (engine.isCheckmate) handleVictory({winner: player, loser: opponent});
+  //     else if (engine.isDraw) handleDraw();
 
-    const handleDraw = async () => {
-      const [underdog, favourite] = [player, opponent].sort((a, b) => a.rating - b.rating);
+  //     engine.stop();
+  //     this.games = this.games.filter((game) => game.id !== id);
 
-      await this.userService.updateOne({_id: underdog.id}, {[category]: {rating: underdog.rating + change}});
+  //     return;
+  //   }
 
-      await this.userService.updateOne({_id: favourite.id}, {[category]: {rating: favourite.rating - change}});
+  //   if (engine.premove) {
+  //     const result = engine.makeMove(engine.premove);
 
-      await this.chessService.create({
-        white: white.id,
-        black: black.id,
-        increment: control.increment,
-        delay: control.delay,
-        time: control.time,
-        winner: null,
-        pgn: engine.pgn,
-        category,
-      });
+  //     if (result) {
+  //       if (engine.isOver) {
+  //         if (engine.isCheckmate) handleVictory({winner: opponent, loser: player});
+  //         else if (engine.isDraw) handleDraw();
 
-      this.server.to(this.socketIoService.getSocketsByUserId(underdog.id)).emit(clientEvents.DRAW, {
-        rating: underdog.rating + change,
-        gain: change,
-        clock: engine.clock,
-      });
+  //         engine.stop();
+  //         this.games = this.games.filter((game) => game.id !== id);
 
-      this.server.to(this.socketIoService.getSocketsByUserId(favourite.id)).emit(clientEvents.DRAW, {
-        rating: favourite.rating - change,
-        loss: -change,
-        clock: engine.clock,
-      });
-    };
+  //         return;
+  //       }
 
-    if (engine.isOver) {
-      if (engine.isCheckmate) handleVictory();
-      else if (engine.isDraw) handleDraw();
-    }
+  //       return engine.startClockTimer(() => handleVictory({winner: opponent, loser: player}));
+  //     }
+  //   }
 
-    this.server.to(sockets).emit(clientEvents.MOVE, {
-      move: body.move,
-      clock: engine.clock,
-    });
+  //   engine.startClockTimer(() => handleVictory({winner: player, loser: opponent}));
+  // }
 
-    engine.startClockTimer(handleVictory);
-  }
+  // @SubscribeMessage(serverEvents.RESIGN)
+  // async resign(@ConnectedSocket() socket: Socket, @MessageBody() body: ResignDto): Promise<void> {
+  //   const {user} = socket.request.session;
+
+  //   const game = this.games.find((game) => game.id === body.gameId) || null;
+
+  //   if (!game) throw new WsException("Invalid game");
+
+  //   const {id, white, black, engine} = game;
+  //   const {control} = engine;
+
+  //   const isWhite = white.id.equals(user._id);
+  //   const isBlack = black.id.equals(user._id);
+
+  //   const isParticipant = isWhite || isBlack;
+
+  //   if (!isParticipant) throw new WsException("Invalid game");
+
+  //   const player = isWhite ? white : black;
+  //   const opponent = isWhite ? black : white;
+
+  //   const shift = Math.round(Math.abs((player.rating - opponent.rating) / 5));
+
+  //   const [underdog] = [player, opponent].sort((a, b) => a.rating - b.rating);
+  //   const isWinnerUnderdog = player.id.equals(underdog.id);
+
+  //   const change = isWinnerUnderdog ? DEFAULT_GAIN + shift : DEFAULT_GAIN - shift;
+
+  //   const category = timeControlToCategory(control);
+
+  //   await this.userService.updateOne({_id: player.id}, {[category]: {rating: player.rating - change}});
+  //   await this.userService.updateOne({_id: opponent.id}, {[category]: {rating: opponent.rating + change}});
+
+  //   await this.chessService.create({
+  //     white: white.id,
+  //     black: black.id,
+  //     increment: control.increment,
+  //     delay: control.delay,
+  //     time: control.time,
+  //     winner: opponent.id,
+  //     pgn: engine.pgn,
+  //     category,
+  //   });
+
+  //   engine.stop();
+  //   this.games = this.games.filter((game) => game.id !== id);
+
+  //   this.server.to(this.socketIoService.getSocketsByUserId(player.id)).emit(clientEvents.LOSS, {
+  //     rating: player.rating - change,
+  //     loss: -change,
+  //     clock: engine.clock,
+  //   });
+
+  //   this.server.to(this.socketIoService.getSocketsByUserId(opponent.id)).emit(clientEvents.VICTORY, {
+  //     rating: opponent.rating + change,
+  //     gain: change,
+  //     clock: engine.clock,
+  //   });
+  // }
+
+  // @SubscribeMessage(serverEvents.OFFER_DRAW)
+  // offerDraw(@ConnectedSocket() socket: Socket, @MessageBody() body: OfferDrawDto): void {
+  //   const {user} = socket.request.session;
+
+  //   const game = this.games.find((game) => game.id === body.gameId) || null;
+
+  //   if (!game) throw new WsException("Invalid game");
+
+  //   const {white, black, engine} = game;
+
+  //   const isWhite = white.id.equals(user._id);
+  //   const isBlack = black.id.equals(user._id);
+
+  //   const isParticipant = isWhite || isBlack;
+
+  //   if (!isParticipant) throw new WsException("Invalid game");
+
+  //   if (engine.isDrawOffered) throw new WsException("Draw has been already offered");
+
+  //   engine.isDrawOffered = true;
+  //   engine.isDrawOfferValid = true;
+
+  //   engine.startDrawOfferTimer();
+
+  //   const opponentId = isWhite ? black.id : white.id;
+
+  //   this.server.to(this.socketIoService.getSocketsByUserId(opponentId)).emit(clientEvents.DRAW_OFFER);
+  // }
+
+  // @SubscribeMessage(serverEvents.ACCEPT_DRAW)
+  // async acceptDraw(@ConnectedSocket() socket: Socket, @MessageBody() body: AcceptDrawDto) {
+  //   const {user} = socket.request.session;
+
+  //   const game = this.games.find((game) => game.id === body.gameId) || null;
+
+  //   if (!game) throw new WsException("Invalid game");
+
+  //   const {id, white, black, engine} = game;
+  //   const {control} = engine;
+
+  //   const isWhite = white.id.equals(user._id);
+  //   const isBlack = black.id.equals(user._id);
+
+  //   const isParticipant = isWhite || isBlack;
+
+  //   if (!isParticipant) throw new WsException("Invalid game");
+
+  //   if (!engine.isDrawOfferValid) throw new WsException("Draw offer is not valid");
+
+  //   const player = isWhite ? white : black;
+  //   const opponent = isWhite ? black : white;
+
+  //   const shift = Math.round(Math.abs((player.rating - opponent.rating) / 5));
+
+  //   const [underdog, favourite] = [player, opponent].sort((a, b) => a.rating - b.rating);
+
+  //   const category = timeControlToCategory(control);
+
+  //   await this.userService.updateOne({_id: underdog.id}, {[category]: {rating: underdog.rating + shift}});
+  //   await this.userService.updateOne({_id: favourite.id}, {[category]: {rating: favourite.rating - shift}});
+
+  //   await this.chessService.create({
+  //     white: white.id,
+  //     black: black.id,
+  //     increment: control.increment,
+  //     delay: control.delay,
+  //     time: control.time,
+  //     winner: null,
+  //     pgn: engine.pgn,
+  //     category,
+  //   });
+
+  //   engine.stop();
+  //   this.games = this.games.filter((game) => game.id !== id);
+
+  //   this.server.to(this.socketIoService.getSocketsByUserId(underdog.id)).emit(clientEvents.DRAW, {
+  //     rating: underdog.rating + shift,
+  //     change: shift,
+  //     clock: engine.clock,
+  //   });
+
+  //   this.server.to(this.socketIoService.getSocketsByUserId(favourite.id)).emit(clientEvents.DRAW, {
+  //     rating: favourite.rating - shift,
+  //     change: -shift,
+  //     clock: engine.clock,
+  //   });
+  // }
+
+  // @SubscribeMessage(serverEvents.DECLINE_DRAW)
+  // declineDraw(@ConnectedSocket() socket: Socket, @MessageBody() body: DeclineDrawDto): void {
+  //   const {user} = socket.request.session;
+
+  //   const game = this.games.find((game) => game.id === body.gameId) || null;
+
+  //   if (!game) throw new WsException("Invalid game");
+
+  //   const {white, black, engine} = game;
+
+  //   const isWhite = white.id.equals(user._id);
+  //   const isBlack = black.id.equals(user._id);
+
+  //   const isParticipant = isWhite || isBlack;
+
+  //   if (!isParticipant) throw new WsException("Invalid game");
+
+  //   if (!engine.isDrawOfferValid) throw new WsException("Draw offer is not valid");
+
+  //   const opponentId = isWhite ? black.id : white.id;
+
+  //   this.server.to(this.socketIoService.getSocketsByUserId(opponentId)).emit(clientEvents.DRAW_OFFER_DECLINE);
+  // }
+
+  // @SubscribeMessage(serverEvents.PREMOVE)
+  // async premove(@ConnectedSocket() socket: Socket, @MessageBody() body: PremoveDto): Promise<void> {
+  //   const error = new WsException("Invalid game");
+
+  //   const game = JSON.parse(await redis.get(`game:${body.gameId}`)) || null;
+
+  //   if (!game) throw error;
+
+  //   const {white, black, turn, engine} = game;
+  //   const {user} = socket.request.session;
+
+  //   const isWhite = white.id.equals(user._id);
+  //   const isBlack = black.id.equals(user._id);
+
+  //   const isParticipant = isWhite || isBlack;
+
+  //   if (!isParticipant) throw error;
+
+  //   const isTurn = (turn === "white" && isWhite) || (turn === "black" && isBlack);
+
+  //   if (isTurn) throw new WsException("It is your turn");
+
+  //   engine.setPremove(body.move);
+  // }
 }

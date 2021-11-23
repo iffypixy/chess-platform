@@ -6,7 +6,7 @@ import {AuthModule} from "@modules/auth";
 import {UserModule} from "@modules/user";
 import {ChessModule} from "@modules/chess";
 import {SocketIoModule} from "@lib/socket.io";
-import {databaseConfig} from "./config";
+import {databaseConfig} from "@config/index";
 
 const env = process.env.NODE_ENV;
 

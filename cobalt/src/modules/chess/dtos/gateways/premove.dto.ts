@@ -1,6 +1,6 @@
 import {IsString} from "class-validator";
 
-export class MakeMoveDto {
+export class PremoveDto {
   @IsString({message: "Game ID must be type of string"})
   gameId: string;
 

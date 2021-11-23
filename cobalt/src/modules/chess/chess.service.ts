@@ -1,6 +1,7 @@
+import {UserService} from "@modules/user";
 import {Injectable} from "@nestjs/common";
 import {InjectModel} from "@nestjs/mongoose";
-import {FilterQuery, Model, QueryOptions} from "mongoose";
+import {FilterQuery, Model, QueryOptions, Types} from "mongoose";
 
 import {ChessGameDocument, ChessGame, ChessGameCreationAttributes} from "./schemas";
 
@@ -9,6 +10,7 @@ export class ChessService {
   constructor(
     @InjectModel(ChessGame.name)
     private readonly chessGameModel: Model<ChessGameDocument>,
+    private readonly userService: UserService,
   ) {}
 
   findOne(filter: FilterQuery<ChessGameDocument>, options?: QueryOptions): Promise<ChessGameDocument> {

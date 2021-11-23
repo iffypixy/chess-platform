@@ -1,11 +1,11 @@
 import * as sess from "express-session";
 import * as connectRedis from "connect-redis";
 
-import {redisClient} from "@lib/redis";
+import {redis} from "@lib/constants/redis";
 
 const RedisStore = connectRedis(sess);
 
-const store = new RedisStore({client: redisClient});
+const store = new RedisStore({client: redis});
 
 export const session = () =>
   sess({

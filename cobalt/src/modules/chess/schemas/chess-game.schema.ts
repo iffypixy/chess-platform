@@ -1,9 +1,9 @@
-import {Prop, Schema, SchemaFactory} from "@nestjs/mongoose";
+import {Prop, raw, Schema, SchemaFactory} from "@nestjs/mongoose";
 import {Types, Document} from "mongoose";
 
 import {UserDocument, User, UserPublicData} from "@modules/user";
 import {CHESS_CATEGORIES} from "../lib/constants/index";
-import {ChessCategory} from "../typings";
+import {ChessCategory, ChessControl} from "../typings";
 
 @Schema({versionKey: false, timestamps: true})
 export class ChessGame {
@@ -30,27 +30,33 @@ export class ChessGame {
   @Prop({
     type: String,
     required: true,
+  })
+  fen: string;
+
+  @Prop({
+    type: String,
+    required: true,
     enum: [CHESS_CATEGORIES.BULLET, CHESS_CATEGORIES.BLITZ, CHESS_CATEGORIES.RAPID, CHESS_CATEGORIES.CLASSICAL],
   })
   category: ChessCategory;
 
-  @Prop({
-    type: Number,
-    required: true,
-  })
-  delay: number;
-
-  @Prop({
-    type: Number,
-    required: true,
-  })
-  time: number;
-
-  @Prop({
-    type: Number,
-    required: true,
-  })
-  increment: number;
+  @Prop(
+    raw({
+      delay: {
+        type: Number,
+        required: true,
+      },
+      time: {
+        type: Number,
+        required: true,
+      },
+      increment: {
+        type: Number,
+        required: true,
+      },
+    }),
+  )
+  control: ChessControl;
 
   @Prop({
     type: Types.ObjectId,
@@ -68,10 +74,9 @@ export interface ChessGameData {
   black: UserDocument;
   winner: UserDocument;
   pgn: string;
+  fen: string;
   category: ChessCategory;
-  delay: number;
-  time: number;
-  increment: number;
+  control: ChessControl;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,9 +88,7 @@ export interface ChessGamePublicData {
   winner: UserPublicData;
   pgn: string;
   category: ChessCategory;
-  delay: number;
-  time: number;
-  increment: number;
+  control: ChessControl;
 }
 
 export type ChessGameDocument = ChessGameData &
@@ -94,7 +97,7 @@ export type ChessGameDocument = ChessGameData &
   };
 
 ChessGameSchema.virtual("public").get(function (this: ChessGameDocument): ChessGamePublicData {
-  const {_id, white, black, winner, pgn, category, delay, time, increment} = this;
+  const {_id, white, black, winner, pgn, category, control} = this;
 
   return {
     id: _id,
@@ -103,9 +106,7 @@ ChessGameSchema.virtual("public").get(function (this: ChessGameDocument): ChessG
     winner: winner.public,
     pgn,
     category,
-    delay,
-    time,
-    increment,
+    control,
   };
 });
 
@@ -113,9 +114,8 @@ export interface ChessGameCreationAttributes {
   white: Types.ObjectId;
   black: Types.ObjectId;
   pgn: string;
-  delay: number;
-  increment: number;
-  time: number;
+  fen: string;
+  control: ChessControl;
   category: ChessCategory;
   winner: Types.ObjectId;
 }
