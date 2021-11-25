@@ -2,8 +2,8 @@ import {Prop, raw, Schema, SchemaFactory} from "@nestjs/mongoose";
 import {Types, Document} from "mongoose";
 
 import {UserDocument, User, UserPublicData} from "@modules/user";
-import {CHESS_CATEGORIES} from "../lib/constants/index";
-import {ChessCategory, ChessControl} from "../typings";
+import {CHESS_TYPES} from "../lib/constants/index";
+import {ChessType, ChessControl} from "../typings";
 
 @Schema({versionKey: false, timestamps: true})
 export class ChessGame {
@@ -36,9 +36,9 @@ export class ChessGame {
   @Prop({
     type: String,
     required: true,
-    enum: [CHESS_CATEGORIES.BULLET, CHESS_CATEGORIES.BLITZ, CHESS_CATEGORIES.RAPID, CHESS_CATEGORIES.CLASSICAL],
+    enum: [CHESS_TYPES.BULLET, CHESS_TYPES.BLITZ, CHESS_TYPES.RAPID, CHESS_TYPES.CLASSICAL],
   })
-  category: ChessCategory;
+  category: ChessType;
 
   @Prop(
     raw({
@@ -75,7 +75,7 @@ export interface ChessGameData {
   winner: UserDocument;
   pgn: string;
   fen: string;
-  category: ChessCategory;
+  type: ChessType;
   control: ChessControl;
   createdAt: Date;
   updatedAt: Date;
@@ -87,7 +87,7 @@ export interface ChessGamePublicData {
   black: UserPublicData;
   winner: UserPublicData;
   pgn: string;
-  category: ChessCategory;
+  type: ChessType;
   control: ChessControl;
 }
 
@@ -97,7 +97,7 @@ export type ChessGameDocument = ChessGameData &
   };
 
 ChessGameSchema.virtual("public").get(function (this: ChessGameDocument): ChessGamePublicData {
-  const {_id, white, black, winner, pgn, category, control} = this;
+  const {_id, white, black, winner, pgn, type, control} = this;
 
   return {
     id: _id,
@@ -105,7 +105,7 @@ ChessGameSchema.virtual("public").get(function (this: ChessGameDocument): ChessG
     black: black.public,
     winner: winner.public,
     pgn,
-    category,
+    type,
     control,
   };
 });
@@ -116,6 +116,6 @@ export interface ChessGameCreationAttributes {
   pgn: string;
   fen: string;
   control: ChessControl;
-  category: ChessCategory;
+  type: ChessType;
   winner: Types.ObjectId;
 }

@@ -1,7 +1,7 @@
 import * as sess from "express-session";
 import * as connectRedis from "connect-redis";
 
-import {redis} from "@lib/constants/redis";
+import {redis} from "@lib/redis";
 
 const RedisStore = connectRedis(sess);
 

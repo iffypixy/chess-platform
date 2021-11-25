@@ -1,14 +1,20 @@
-import {ChessCategory} from "@modules/chess";
+import {ChessType} from "@modules/chess";
 
-export const CHESS_CATEGORIES: {[key: string]: ChessCategory} = {
+export const CHESS_TYPES: {[key: string]: ChessType} = {
   BULLET: "bullet",
   BLITZ: "blitz",
   RAPID: "rapid",
   CLASSICAL: "classical",
 };
 
-export const MAX_DIFF_IN_RATING = 50;
-export const DEFAULT_GAIN = 25;
-export const MAX_WAIT_TIME = 10000;
+export const MATCHMAKING = {
+  MAX_RATING_DIFFERENCE: 50,
+  MAX_WAIT_TIME: 10,
+  RATING_GAIN: 25,
+  INIT_TIME: 15000,
+  DRAW_OFFER_DURATION: 10000,
+};
 
-export const DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+export const CHESS_NOTATION = {
+  INITIAL_FEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+};
