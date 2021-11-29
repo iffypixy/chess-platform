@@ -1,4 +1,4 @@
-import {ChessType} from "@modules/chess";
+import {ChessType} from "@modules/matchmaking";
 
 export const CHESS_TYPES: {[key: string]: ChessType} = {
   BULLET: "bullet",

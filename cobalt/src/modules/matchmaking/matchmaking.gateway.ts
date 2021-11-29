@@ -9,8 +9,6 @@ import {
   WsException,
 } from "@nestjs/websockets";
 import {Server, Socket} from "socket.io";
-import {nanoid} from "nanoid";
-import {NextFunction, Request, Response} from "express";
 import {Chess} from "chess.js";
 import {Types} from "mongoose";
 import process from "process";
@@ -19,9 +17,8 @@ import {UserData, UserService} from "@modules/user";
 import {constants} from "@lib/constants";
 import {SocketIoService} from "@lib/socket.io";
 import {redis} from "@lib/redis";
-import {session} from "@lib/session";
 import {ChessControl, ChessEntity, ChessPlayer, ChessType, ChessSide, ChessResult} from "./typings";
-import {ChessService} from "./chess.service";
+import {MatchmakingService} from "./services/matchmaking.service";
 import {
   AcceptDrawDto,
   DeclineDrawDto,
@@ -31,7 +28,8 @@ import {
   OfferDrawDto,
   PremoveDto,
 } from "./dtos/gateways";
-import {MATCHMAKING, CHESS_NOTATION, CHESS_TYPES} from "./lib/constants";
+import {MATCHMAKING, CHESS_TYPES} from "./lib/constants";
+import {elo} from "./lib/elo";
 
 const serverEvents = {
   JOIN_QUEUE: "join-queue",
@@ -70,51 +68,12 @@ const controlToType = ({time, delay, increment}: ChessControl): ChessType => {
   else if (overall > 20) return CHESS_TYPES.CLASSICAL;
 };
 
-const getResult = (
-  game: ChessEntity,
-): {
+interface GetResultReturn {
   result: ChessResult;
   winner: ChessPlayer;
   loser: ChessPlayer;
   change: number;
-} | null => {
-  const engine = new Chess(game.notation.fen);
-
-  const turn: ChessSide = engine.turn() === "w" ? "white" : "black";
-  const opposite: ChessSide = turn === "white" ? "black" : "white";
-
-  const isCheckmate = engine.in_checkmate();
-  const isDraw =
-    engine.in_draw() || engine.in_stalemate() || engine.in_threefold_repetition() || engine.insufficient_material();
-
-  if (isCheckmate) {
-    const winner = game[opposite];
-    const loser = game[turn];
-
-    const difference = Math.abs(Math.round((loser.rating - winner.rating) / 5));
-    const change = MATCHMAKING.RATING_GAIN + difference;
-
-    return {
-      result: "1:0",
-      winner,
-      loser,
-      change,
-    };
-  } else if (isDraw) {
-    const [winner, loser] = [game[turn], game[opposite]].sort((a, b) => a.rating - b.rating);
-
-    const change = Math.abs(Math.round((winner.rating - loser.rating) / 5));
-
-    return {
-      result: "1/2:1/2",
-      winner,
-      loser,
-      change,
-    };
-  }
-
-  return null;
-};
+}
 
 @WebSocketGateway({
   cors: {
@@ -122,104 +81,20 @@ const getResult = (
     credentials: true,
   },
 })
-export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
+export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
   constructor(
     private readonly userService: UserService,
-    private readonly chessService: ChessService,
+    private readonly mmService: MatchmakingService,
     private readonly service: SocketIoService,
   ) {}
 
   @WebSocketServer()
   server: Server;
 
-  private queueInterval: NodeJS.Timer | null = null;
-
   afterInit(): void {
-    this.server.use((socket: Socket, next: NextFunction) => {
-      session()(socket.request as unknown as Request, {} as Response, next);
-    });
+    this.service.server = this.server;
 
-    this.queueInterval = setInterval(async () => {
-      const jsons = await redis.lrange("queue", 0, -1);
-      const queue = jsons.map((json) => JSON.parse(json)).filter(Boolean);
-
-      for (let i = 0; i < queue.length; i++) {
-        const {userId, start, control, rating} = queue[i];
-
-        const opponent = queue
-          .filter(
-            (entity) =>
-              !userId.equals(entity.userId) &&
-              control.time === entity.control.time &&
-              control.delay === entity.control.delay &&
-              control.increment === entity.control.increment,
-          )
-          .sort((a, b) => Math.abs(Math.abs(rating - a.rating) - Math.abs(rating - b.rating)))[0];
-
-        const isOpponentRelevant =
-          Math.abs(rating - opponent.rating) <= MATCHMAKING.MAX_RATING_DIFFERENCE ||
-          Date.now() - start >= MATCHMAKING.MAX_WAIT_TIME;
-
-        if (isOpponentRelevant) {
-          const id = nanoid();
-
-          const white = await this.userService.findById(userId);
-          const black = await this.userService.findById(opponent.userId);
-
-          if (!(white && black)) return;
-
-          const game: ChessEntity = {
-            control,
-            premove: null,
-            type: controlToType(control),
-            white: {
-              id: white._id,
-              clock: control.time,
-              last: null,
-              rating,
-            },
-            black: {
-              id: black._id,
-              clock: control.time,
-              rating: opponent.rating,
-              last: null,
-            },
-            flags: {
-              hasDrawBeenOffered: false,
-              isDrawOfferValid: false,
-              isStarted: false,
-            },
-            notation: {
-              fen: CHESS_NOTATION.INITIAL_FEN,
-              pgn: null,
-            },
-          };
-
-          redis.set(id, JSON.stringify(game));
-
-          const sockets = [
-            ...this.service.getSocketsByUserId(white._id),
-            ...this.service.getSocketsByUserId(black._id),
-          ];
-
-          this.server.to(sockets).emit(clientEvents.MATCH_FOUND, {
-            game: {
-              white: {
-                user: white.public,
-                rating,
-              },
-              black: {
-                user: black.public,
-                rating: opponent.rating,
-              },
-              control,
-            },
-          });
-
-          redis.pexpire(`clock:${id}`, MATCHMAKING.INIT_TIME);
-        }
-      }
-    }, 1000);
+    this.service.useAuthMiddleware();
   }
 
   async handleDisconnect(socket: Socket): Promise<void> {
@@ -326,37 +201,49 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
 
     const handleOver = async () => {
-      const {result, winner, loser, change} = getResult(game);
+      const isResultative = engine.in_checkmate();
+      const isDraw = !isResultative;
 
-      const isResultative = result === "1:0";
-      const isDraw = result === "1/2:1/2";
+      if (isResultative) {
+        const winner = game[turn];
+        const loser = game[opposite];
 
-      await this.userService.updateOne({_id: winner.id}, {[game.type]: {rating: winner.rating + change}});
-      await this.userService.updateOne({_id: loser.id}, {[game.type]: {rating: loser.rating - change}});
+        const result = elo.calculateVictory({winner: winner.rating, loser: loser.rating});
 
-      await this.chessService.create({
-        white: game.white.id,
-        black: game.black.id,
-        control: game.control,
-        winner: isResultative ? winner.id : null,
-        pgn: engine.pgn(),
-        fen: engine.fen(),
-        type: game.type,
-      });
+        await this.userService.updateOne({_id: winner.id}, {[game.type]: {rating: result.winner}});
+        await this.userService.updateOne({_id: loser.id}, {[game.type]: {rating: result.loser}});
 
-      this.server
-        .to(this.service.getSocketsByUserId(winner.id))
-        .emit(isDraw ? clientEvents.DRAW : clientEvents.VICTORY, {
-          rating: winner.rating + change,
+        this.server.to(this.service.getSocketsByUserId(winner.id)).emit(clientEvents.VICTORY, {
+          rating: result.winner,
           clock: winner.clock,
-          change,
+          shift: result.shift,
         });
 
-      this.server.to(this.service.getSocketsByUserId(loser.id)).emit(isDraw ? clientEvents.DRAW : clientEvents.LOSS, {
-        rating: loser.rating - change,
-        clock: loser.clock,
-        change: -change,
-      });
+        this.server.to(this.service.getSocketsByUserId(loser.id)).emit(clientEvents.LOSS, {
+          rating: result.loser,
+          clock: loser.clock,
+          shift: -result.shift,
+        });
+      } else if (isDraw) {
+        const [underdog, favourite] = [game[turn], game[opposite]].sort((a, b) => a.rating - b.rating);
+
+        const result = elo.calculateDraw({underdog: underdog.rating, favourite: favourite.rating});
+
+        await this.userService.updateOne({_id: underdog.id}, {[game.type]: {rating: result.underdog}});
+        await this.userService.updateOne({_id: favourite.id}, {[game.type]: {rating: result.favourite}});
+
+        this.server.to(this.service.getSocketsByUserId(underdog.id)).emit(clientEvents.DRAW, {
+          rating: result.underdog,
+          clock: underdog.clock,
+          shift: result.shift,
+        });
+
+        this.server.to(this.service.getSocketsByUserId(favourite.id)).emit(clientEvents.DRAW, {
+          rating: result.favourite,
+          clock: favourite.clock,
+          shift: -result.shift,
+        });
+      }
     };
 
     const isOver = engine.game_over();
@@ -415,7 +302,7 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
     await this.userService.updateOne({_id: loser.id}, {[type]: {rating: loser.rating - change}});
     await this.userService.updateOne({_id: winner.id}, {[type]: {rating: winner.rating + change}});
 
-    await this.chessService.create({
+    await this.mmService.create({
       white: game.white.id,
       black: game.black.id,
       control: game.control,
@@ -497,7 +384,7 @@ export class ChessGateway implements OnGatewayInit, OnGatewayDisconnect {
     await this.userService.updateOne({_id: underdog.id}, {[type]: {rating: underdog.rating + change}});
     await this.userService.updateOne({_id: favourite.id}, {[type]: {rating: favourite.rating - change}});
 
-    await this.chessService.create({
+    await this.mmService.create({
       white: game.white.id,
       black: game.black.id,
       control: game.control,

@@ -2,7 +2,7 @@ import {Prop, raw, Schema, SchemaFactory} from "@nestjs/mongoose";
 import {Types, Document} from "mongoose";
 
 import {UserDocument, User, UserPublicData} from "@modules/user";
-import {CHESS_TYPES} from "../lib/constants/index";
+import {CHESS_TYPES} from "../lib/constants";
 import {ChessType, ChessControl} from "../typings";
 
 @Schema({versionKey: false, timestamps: true})

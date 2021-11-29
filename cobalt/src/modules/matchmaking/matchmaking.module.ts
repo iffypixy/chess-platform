@@ -3,11 +3,11 @@ import {MongooseModule} from "@nestjs/mongoose";
 
 import {UserModule} from "@modules/user";
 import {ChessGame, ChessGameSchema} from "./schemas";
-import {ChessService} from "./chess.service";
-import {ChessGateway} from "./chess.gateway";
+import {MatchmakingService} from "./services/matchmaking.service";
+import {MatchmakingGateway} from "./matchmaking.gateway";
 
 @Module({
   imports: [UserModule, MongooseModule.forFeature([{name: ChessGame.name, schema: ChessGameSchema}])],
-  providers: [ChessService, ChessGateway],
+  providers: [MatchmakingService, MatchmakingGateway],
 })
-export class ChessModule {}
+export class MatchmakingModule {}

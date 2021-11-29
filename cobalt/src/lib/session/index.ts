@@ -4,8 +4,11 @@ import * as connectRedis from "connect-redis";
 import {redis} from "@lib/redis";
 
 const RedisStore = connectRedis(sess);
+let store: connectRedis.RedisStore | null = null;
 
-const store = new RedisStore({client: redis});
+export const setupStore = () => {
+  store = new RedisStore({client: redis});
+};
 
 export const session = () =>
   sess({

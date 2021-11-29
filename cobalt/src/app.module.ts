@@ -1,10 +1,11 @@
 import {Module} from "@nestjs/common";
 import {MongooseModule} from "@nestjs/mongoose";
 import {ConfigModule, ConfigService} from "@nestjs/config";
+import {ScheduleModule} from "@nestjs/schedule";
 
 import {AuthModule} from "@modules/auth";
 import {UserModule} from "@modules/user";
-import {ChessModule} from "@modules/chess";
+import {MatchmakingModule} from "@modules/matchmaking";
 import {SocketIoModule} from "@lib/socket.io";
 import {databaseConfig} from "@config/index";
 
@@ -25,10 +26,11 @@ const env = process.env.NODE_ENV;
         useCreateIndex: true,
       }),
     }),
+    ScheduleModule.forRoot(),
     SocketIoModule,
     UserModule,
     AuthModule,
-    ChessModule,
+    MatchmakingModule,
   ],
 })
 export class AppModule {}

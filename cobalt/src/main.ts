@@ -3,8 +3,8 @@ import {ValidationPipe} from "@nestjs/common";
 
 import {RedisIoAdapter} from "@lib/adapters";
 import {constants} from "@lib/constants";
-import {session} from "@lib/session";
-import {Cluster} from "@lib/cluster";
+import {session, setupStore} from "@lib/session";
+import {setupRedis} from "@lib/redis";
 import {AppModule} from "./app.module";
 
 async function bootstrap() {
@@ -15,6 +15,9 @@ async function bootstrap() {
     },
   });
 
+  setupRedis();
+  setupStore();
+
   app.use(session());
   app.useGlobalPipes(new ValidationPipe({transform: true}));
   app.useWebSocketAdapter(new RedisIoAdapter(app));
@@ -22,4 +25,4 @@ async function bootstrap() {
   await app.listen(process.env.PORT);
 }
 
-Cluster.register(bootstrap);
+bootstrap();

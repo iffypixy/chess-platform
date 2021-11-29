@@ -1,6 +1,10 @@
 import * as Redis from "ioredis";
 
-export const redis = new Redis({
-  host: process.env.REDIS_HOST,
-  port: Number(process.env.PROCESS_PORT),
-});
+export let redis: Redis.Redis = null;
+
+export const setupRedis = () => {
+  redis = new Redis({
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT),
+  });
+};
