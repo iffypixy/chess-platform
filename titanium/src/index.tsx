@@ -3,7 +3,7 @@ import {render} from "react-dom";
 import {BrowserRouter} from "react-router-dom";
 import {Provider} from "react-redux";
 
-import {store} from "@lib/store";
+import {store} from "@shared/lib/store";
 import {App} from "./app";
 
 const root = document.getElementById("root");

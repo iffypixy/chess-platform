@@ -17,9 +17,8 @@
     "paths": {
       "@pages/*": ["./src/pages", "./src/pages/*"],
       "@features/*": ["./src/features", "./src/features/*"],
-      "@api/*": ["./src/api", "./src/api/*"],
-      "@ui/*": ["./src/ui", "./src/ui/*"],
-      "@lib/*": ["./src/lib", "./src/lib/*"]
+      "@shared/*": ["./src/shared", "./src/shared/*"],
+      "@entities/*": ["./src/entities", "./src/entities/*"]
     }
   },
   "include": ["./src/**/*", "./typings/**/*"],
