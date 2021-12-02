@@ -1,3 +1,5 @@
 import * as React from "react";
 
-export const App: React.FC = () => null;
+import {Routes} from "./pages";
+
+export const App: React.FC = () => <Routes />;
