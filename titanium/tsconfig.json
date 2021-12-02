@@ -14,7 +14,13 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "baseUrl": "./",
-    "paths": {}
+    "paths": {
+      "@pages/*": ["./src/pages", "./src/pages/*"],
+      "@features/*": ["./src/features", "./src/features/*"],
+      "@api/*": ["./src/api", "./src/api/*"],
+      "@ui/*": ["./src/ui", "./src/ui/*"],
+      "@lib/*": ["./src/lib", "./src/lib/*"]
+    }
   },
   "include": ["./src/**/*", "./typings/**/*"],
   "exclude": ["node_modules", "./**/*.spec.ts"]
