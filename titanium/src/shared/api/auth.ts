@@ -23,12 +23,12 @@ export interface Credentials {
   };
 }
 
-interface LoginData {
+export interface LoginData {
   username: string;
   password: string;
 }
 
-interface LoginResponse {
+export interface LoginResponse {
   credentials: Credentials;
 }
 
@@ -39,12 +39,12 @@ const login = (data: LoginData): AxiosPromise<LoginResponse> =>
     data,
   });
 
-interface RegisterData {
+export interface RegisterData {
   username: string;
   password: string;
 }
 
-interface RegisterResponse {
+export interface RegisterResponse {
   credentials: Credentials;
 }
 
@@ -55,7 +55,7 @@ const register = (data: RegisterData): AxiosPromise<RegisterResponse> =>
     data,
   });
 
-interface GetCredentialsResponse {
+export interface GetCredentialsResponse {
   credentials: Credentials;
 }
 
