@@ -1,4 +1,6 @@
 const path = require("path");
+const webpack = require("webpack");
+const dotenv = require("dotenv");
 const HTMLWebpackPlugin = require("html-webpack-plugin");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 const TSConfigPathsWebpackPlugin = require("tsconfig-paths-webpack-plugin");
@@ -9,6 +11,13 @@ const BundleAnalyzerWebpackPlugin =
 module.exports = ({env}) => {
   const isDev = env === "development";
   const isProd = !isDev;
+
+  const vars = dotenv.config({path: `.env.${env}`}).parsed;
+
+  const config = Object.keys(vars).reduce((prev, next) => {
+    prev[`process.env.${next}`] = JSON.stringify(vars[next]);
+    return prev;
+  }, {});
 
   return {
     mode: env,
@@ -42,6 +51,7 @@ module.exports = ({env}) => {
       new BundleAnalyzerWebpackPlugin({
         analyzerMode: false,
       }),
+      new webpack.DefinePlugin(config),
     ],
     module: {
       rules: [
