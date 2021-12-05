@@ -82,6 +82,7 @@ module.exports = ({env}) => {
     devServer: {
       hot: true,
       port: 3000,
+      historyApiFallback: true,
     },
     stats: "errors-warnings",
   };

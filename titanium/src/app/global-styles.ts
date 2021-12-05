@@ -1,38 +1,6 @@
 import {createGlobalStyle, css} from "styled-components";
 
-const fonts = css`
-  @font-face {
-    font-family: "Jetbrains Mono";
-    font-style: normal;
-    font-weight: 300;
-    src: url("/public/fonts/JetBrains_Mono/JetBrainsMono-Light.ttf")
-      format("ttf");
-  }
-
-  @font-face {
-    font-family: "Jetbrains Mono";
-    font-style: normal;
-    font-weight: 400;
-    src: url("/public/fonts/JetBrains_Mono/JetBrainsMono-Regular.ttf")
-      format("ttf");
-  }
-
-  @font-face {
-    font-family: "Jetbrains Mono";
-    font-style: normal;
-    font-weight: 600;
-    src: url("/public/fonts/JetBrains_Mono/JetBrainsMono-SemiBold.ttf")
-      format("ttf");
-  }
-
-  @font-face {
-    font-family: "Jetbrains Mono";
-    font-style: normal;
-    font-weight: 700;
-    src: url("/public/fonts/JetBrains_Mono/JetBrainsMono-Bold.ttf")
-      format("ttf");
-  }
-`;
+const fonts = css``;
 
 export const GlobalStyles = createGlobalStyle`
     ${fonts}
