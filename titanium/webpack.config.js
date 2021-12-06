@@ -37,6 +37,9 @@ module.exports = ({env}) => {
     resolve: {
       extensions: [".js", ".ts", ".tsx"],
       plugins: [new TSConfigPathsWebpackPlugin()],
+      alias: {
+        "@mui/styled-engine": "@mui/styled-engine-sc",
+      },
     },
     plugins: [
       new HTMLWebpackPlugin({
