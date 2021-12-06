@@ -1,25 +1,29 @@
 import * as React from "react";
 import {useSelector} from "react-redux";
-import {Route, RouteProps, Navigate} from "react-router-dom";
+import {Navigate} from "react-router-dom";
 
 import {authSelectors} from "@features/auth";
 
-interface PrivateRouteProps extends RouteProps {}
+interface PrivateRouteProps {
+  children: React.ReactElement;
+}
 
-export const PrivateRoute: React.FC<PrivateRouteProps> = (props) => {
+export const PrivateRoute: React.FC<PrivateRouteProps> = ({children}) => {
   const isAuthenticated = useSelector(authSelectors.isAuthenticated);
 
-  if (!isAuthenticated) return <Navigate to="/" />;
+  if (!isAuthenticated) return <Navigate to="/login" />;
 
-  return <Route {...props} />;
+  return children;
 };
 
-interface PublicOnlyRouteProps extends RouteProps {}
+interface PublicOnlyRouteProps {
+  children: React.ReactElement;
+}
 
-export const PublicOnlyRoute: React.FC<PublicOnlyRouteProps> = (props) => {
+export const PublicOnlyRoute: React.FC<PublicOnlyRouteProps> = ({children}) => {
   const isAuthenticated = useSelector(authSelectors.isAuthenticated);
 
   if (isAuthenticated) return <Navigate to="/" />;
 
-  return <Route {...props} />;
+  return children;
 };

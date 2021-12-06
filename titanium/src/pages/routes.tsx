@@ -9,7 +9,21 @@ import {RegisterPage} from "./register";
 export const Routes: React.FC = () => (
   <Switch>
     <Route path="/" element={<HomePage />} />
-    <PublicOnlyRoute path="/register" element={<RegisterPage />} />
-    <PublicOnlyRoute path="/login" element={<LoginPage />} />
+    <Route
+      path="/register"
+      element={
+        <PublicOnlyRoute>
+          <RegisterPage />
+        </PublicOnlyRoute>
+      }
+    />
+    <Route
+      path="/login"
+      element={
+        <PublicOnlyRoute>
+          <LoginPage />
+        </PublicOnlyRoute>
+      }
+    />
   </Switch>
 );
