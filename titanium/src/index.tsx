@@ -5,7 +5,7 @@ import {Provider} from "react-redux";
 
 import {store} from "@shared/lib/store";
 import {ThemeProvider} from "@shared/lib/theming";
-import {App} from "@app/app";
+import {App} from "./app";
 
 const root = document.getElementById("root");
 
