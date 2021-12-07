@@ -1,16 +1,33 @@
 import * as React from "react";
-import {Center} from "@chakra-ui/layout";
+import {Flex, Heading, Box} from "@chakra-ui/layout";
 
-import {MainTemplate, MainTemplateProps} from "./main-template";
+import {MainTemplate} from "./main-template";
 
-interface ContentTemplateProps extends MainTemplateProps {}
+const Header: React.FC = () => (
+  <Flex
+    as="header"
+    w="100%"
+    position="fixed"
+    alignItems="center"
+    justifyContent="space-between"
+    bg="white"
+    py={5}
+    px={10}
+  >
+    <Heading>Rechess</Heading>
+  </Flex>
+);
+
+interface ContentTemplateProps {
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+}
 
 export const ContentTemplate: React.FC<ContentTemplateProps> = ({
-  header,
   footer,
   children,
 }) => (
-  <MainTemplate header={header} footer={footer}>
-    <Center>{children}</Center>
+  <MainTemplate header={<Header />} footer={footer}>
+    <Box bg="gray.50">{children}</Box>
   </MainTemplate>
 );
