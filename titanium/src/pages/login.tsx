@@ -56,7 +56,7 @@ export const LoginPage: React.FC = () => {
     <MainTemplate>
       <Center w="100%" h="100vh">
         <form onSubmit={handleSubmit(onSubmit)}>
-          <VStack w="400px" spacing={8}>
+          <VStack w={[300, 400]} spacing={8}>
             <Heading fontSize="3xl" fontWeight="bold">
               Sign in
             </Heading>
