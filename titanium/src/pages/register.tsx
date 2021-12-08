@@ -65,14 +65,14 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <MainTemplate>
-      <Center w="100%" h="100vh">
+      <Center w="full" h="100vh">
         <form onSubmit={handleSubmit(onSubmit)}>
           <VStack w={[300, 400]} spacing={8}>
             <Heading fontSize="3xl" fontWeight="bold">
               Sign up
             </Heading>
 
-            <VStack w="100%" spacing={4}>
+            <VStack w="full" spacing={4}>
               <FormControl id="username" isInvalid={!!errors.username}>
                 <FormLabel htmlFor="username" color="gray.500" fontSize="sm">
                   Username
@@ -117,7 +117,7 @@ export const RegisterPage: React.FC = () => {
             </VStack>
 
             <HStack
-              w="100%"
+              w="full"
               justifyContent="space-between"
               alignItems="flex-start"
             >
