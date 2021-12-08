@@ -12,7 +12,7 @@ export const MainTemplate: React.FC<MainTemplateProps> = ({
   footer,
   children,
 }) => (
-  <Box w="100%" h="100%">
+  <Box w="full" h="full">
     {header && <header>{header}</header>}
     <main>{children}</main>
     {footer && <footer>{footer}</footer>}
