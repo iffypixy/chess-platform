@@ -1,2 +1,3 @@
 export {MatchmakingModule} from "./matchmaking.module";
-export * from "./typings";
+export {SQUARES, PROMOTION_PIECES} from "./lib/constants";
+export {PromotionPiece} from "./typings";

@@ -13,7 +13,7 @@ export class SocketIoService {
     const sockets: string[] = [];
 
     for (const socket of this.server.sockets.sockets.values() as IterableIterator<Socket>) {
-      if (socket.request.session.user._id.equals(id)) sockets.push(socket.id);
+      if (String(socket.request.session.user._id) === String(id)) sockets.push(socket.id);
     }
 
     return sockets;

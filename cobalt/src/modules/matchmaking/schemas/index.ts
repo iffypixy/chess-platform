@@ -1,8 +1,8 @@
+export {Match, MatchData, MatchDocument, MatchSchema, MatchPublicData, MatchCreationAttributes} from "./match";
 export {
-  ChessGameData,
-  ChessGameDocument,
-  ChessGame,
-  ChessGameSchema,
-  ChessGamePublicData,
-  ChessGameCreationAttributes,
-} from "./chess-game.schema";
+  MatchPlayer,
+  MatchPlayerData,
+  MatchPlayerDocument,
+  MatchPlayerSchema,
+  MatchPlayerCreationAttributes,
+} from "./match-player";

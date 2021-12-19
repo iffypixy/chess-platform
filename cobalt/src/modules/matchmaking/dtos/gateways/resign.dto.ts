@@ -1,6 +1,6 @@
 import {IsString} from "class-validator";
 
 export class ResignDto {
-  @IsString({message: "Game ID must be type of string"})
-  gameId: string;
+  @IsString({message: "Match ID must be type of string"})
+  matchId: string;
 }

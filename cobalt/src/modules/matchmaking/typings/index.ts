@@ -1,37 +1,61 @@
+import {ShortMove} from "chess.js";
 import {Types} from "mongoose";
 
-export type ChessSide = "white" | "black";
+import {UserDocument, UserPublicData} from "@modules/user";
 
-export type ChessType = "bullet" | "blitz" | "rapid" | "classical";
+export type MatchSide = "white" | "black";
 
-export type ChessResult = "1/2:1/2" | "1:0";
+export type MatchType = "bullet" | "blitz" | "rapid" | "classical";
 
-export interface ChessControl {
+export type MatchResult = "victory" | "lose" | "draw";
+
+export type PromotionPiece = "q" | "r" | "b" | "n";
+
+export interface MatchControl {
   time: number;
   increment: number;
   delay: number;
 }
 
-export interface ChessPlayer {
-  id: Types.ObjectId;
-  clock: number;
-  last: number | null;
-  rating: number;
+export interface MatchEntity {
+  id: string;
+  white: MatchPlayerEntity;
+  black: MatchPlayerEntity;
+  fen: string;
+  pgn: string;
+  last: number;
+  control: MatchControl;
+  type: MatchType;
+  isDrawOfferValid: boolean;
+  premove: ShortMove | null;
+  drawOfferTimeout: number | null;
+  clockTimeout: number | null;
 }
 
-export interface ChessEntity {
-  white: ChessPlayer;
-  black: ChessPlayer;
-  control: ChessControl;
-  premove: string | null;
-  type: ChessType;
-  flags: {
-    hasDrawBeenOffered: boolean;
-    isDrawOfferValid: boolean;
-    isStarted: boolean;
-  };
-  notation: {
-    fen: string | null;
-    pgn: string | null;
-  };
+export interface MatchPlayerEntity {
+  id: Types.ObjectId;
+  user: UserDocument;
+  clock: number;
+  rating: number;
+  side: MatchSide;
+  hasOfferedDraw: boolean;
+}
+
+export interface MatchEntityPublic {
+  id: string;
+  control: MatchControl;
+  type: MatchType;
+  pgn: string;
+  fen: string;
+  white: MatchEntityPlayerPublic;
+  black: MatchEntityPlayerPublic;
+  isDrawOfferValid: boolean;
+}
+
+export interface MatchEntityPlayerPublic {
+  user: UserPublicData;
+  side: MatchSide;
+  rating: number;
+  clock: number;
+  hasOfferedDraw: boolean;
 }

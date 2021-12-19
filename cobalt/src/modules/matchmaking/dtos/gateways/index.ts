@@ -5,3 +5,4 @@ export {AcceptDrawDto} from "./accept-draw.dto";
 export {DeclineDrawDto} from "./decline-draw.dto";
 export {OfferDrawDto} from "./offer-draw.dto";
 export {PremoveDto} from "./premove.dto";
+export {RemovePremoveDto} from "./remove-premove.dto";

@@ -1,7 +1,7 @@
 import {NestFactory} from "@nestjs/core";
 import {ValidationPipe} from "@nestjs/common";
 
-import {RedisIoAdapter} from "@lib/adapters";
+import {RedisIoAdapter} from "@lib/socket.io";
 import {constants} from "@lib/constants";
 import {session, setupStore} from "@lib/session";
 import {setupRedis} from "@lib/redis";
@@ -21,6 +21,8 @@ async function bootstrap() {
   app.use(session());
   app.useGlobalPipes(new ValidationPipe({transform: true}));
   app.useWebSocketAdapter(new RedisIoAdapter(app));
+
+  app.setGlobalPrefix("api");
 
   await app.listen(process.env.PORT);
 }

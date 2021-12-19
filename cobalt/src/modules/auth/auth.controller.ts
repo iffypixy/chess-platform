@@ -61,8 +61,6 @@ export class AuthController {
   @UseGuards(IsAuthenticatedGuard)
   @Post("logout")
   async logout(@Session() session: SessionData) {
-    console.log(session);
-
     session.destroy((error) => {
       if (error) throw error;
     });

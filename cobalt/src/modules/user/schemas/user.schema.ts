@@ -1,7 +1,7 @@
 import {Prop, Schema, SchemaFactory, raw} from "@nestjs/mongoose";
 import {Document, Model, Types} from "mongoose";
 
-interface ControlMode {
+export interface ControlMode {
   rating: number;
   calibrated: boolean;
 }

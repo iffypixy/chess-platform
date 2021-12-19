@@ -1,6 +1,15 @@
 import {Injectable} from "@nestjs/common";
 import {InjectModel} from "@nestjs/mongoose";
-import {FilterQuery, Model, QueryOptions, Types, UpdateQuery, UpdateWriteOpResult} from "mongoose";
+import {
+  FilterQuery,
+  Model,
+  QueryOptions,
+  ReturnsNewDoc,
+  Types,
+  UpdateQuery,
+  UpdateWithAggregationPipeline,
+  UpdateWriteOpResult,
+} from "mongoose";
 
 import {User, UserDocument, UserData, UserCreationAttributes} from "./schemas";
 
@@ -25,6 +34,14 @@ export class UserService {
     options?: QueryOptions,
   ): Promise<UpdateWriteOpResult> {
     return this.userModel.updateOne(filter, update, options).exec();
+  }
+
+  findOneAndUpdate(
+    filter: FilterQuery<UserDocument>,
+    update: UpdateQuery<UserDocument> | UpdateWithAggregationPipeline,
+    options: QueryOptions & {new: boolean},
+  ) {
+    return this.userModel.findOneAndUpdate(filter, update, options);
   }
 
   create(options: UserCreationAttributes): Promise<UserDocument> {

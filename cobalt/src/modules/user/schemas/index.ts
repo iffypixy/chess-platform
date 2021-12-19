@@ -5,4 +5,5 @@ export {
   UserCreationAttributes,
   UserPublicData,
   UserData,
+  ControlMode,
 } from "./user.schema";

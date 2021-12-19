@@ -12,10 +12,10 @@ interface CalculateVictoryReturn {
 }
 
 const calculateVictory = ({winner, loser}: CalculateVictoryData): CalculateVictoryReturn => {
-  const difference = Math.abs(loser - winner);
-  const shift = Math.round(difference / 5);
+  const difference = loser - winner;
+  const shift = Math.round(difference / 20);
 
-  const change = MATCHMAKING.RATING_GAIN + shift;
+  const change = Math.max(1, MATCHMAKING.RATING_GAIN + shift);
 
   return {
     winner: winner + change,
