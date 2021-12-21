@@ -7,8 +7,13 @@ import {
   Text,
   Container,
 } from "@chakra-ui/layout";
+import {useNavigate} from "react-router-dom";
 
+import {matchmakingActions} from "@features/matchmaking";
+import {matchActions} from "@features/matches";
 import {ContentTemplate} from "@shared/ui/templates";
+import {useDispatch} from "@shared/lib/store";
+import {socket} from "@shared/lib/socket";
 
 const types = [
   {
@@ -61,8 +66,14 @@ const types = [
   },
 ];
 
-const PanelButton: React.FC = ({children}) => (
+interface PanelButtonProps {
+  children: React.ReactNode;
+  handleClick: () => void;
+}
+
+const PanelButton: React.FC<PanelButtonProps> = ({children, handleClick}) => (
   <Center
+    onClick={handleClick}
     role="button"
     w={0.3}
     h={50}
@@ -79,6 +90,17 @@ const PanelButton: React.FC = ({children}) => (
 );
 
 export const HomePage: React.FC = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    socket.on("match-found", ({match}) => {
+      dispatch(matchActions.setMatch({match}));
+
+      navigate(`/match/${match.id}`);
+    });
+  }, []);
+
   return (
     <ContentTemplate>
       <Container maxW="container.xl" h="full">
@@ -103,7 +125,18 @@ export const HomePage: React.FC = () => {
                   {[...types]
                     .slice(idx * 3, (idx + 1) * 3)
                     .map(({time, increment}, idx) => (
-                      <PanelButton key={idx}>
+                      <PanelButton
+                        key={idx}
+                        handleClick={() => {
+                          dispatch(
+                            matchmakingActions.joinQueue({
+                              delay: 0,
+                              increment,
+                              time,
+                            })
+                          );
+                        }}
+                      >
                         {time}|{increment}
                       </PanelButton>
                     ))}

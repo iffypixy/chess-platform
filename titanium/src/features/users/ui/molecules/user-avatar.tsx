@@ -6,5 +6,5 @@ interface UserAvatarProps extends Partial<AvatarProps> {
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({url, ...props}) => (
-  <Avatar {...props} src={url} name="An avatar of the user" />
+  <Avatar {...props} name="An avatar of the user" />
 );

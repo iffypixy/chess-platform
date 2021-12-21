@@ -172,8 +172,8 @@ export const ContentTemplate: React.FC<ContentTemplateProps> = ({
   footer,
   children,
 }) => (
-  <MainTemplate header={<Header />} footer={footer}>
-    <Box w="full" h={0} minH="100vh" pt={headerHeight}>
+  <MainTemplate footer={footer}>
+    <Box w="full" h={0} minH="100vh">
       {children}
     </Box>
   </MainTemplate>

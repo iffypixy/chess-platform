@@ -26,6 +26,7 @@ module.exports = ({env}) => {
       path: path.resolve(__dirname, "./build"),
       filename: "[contenthash].bundle.js",
       clean: true,
+      publicPath: "/",
     },
     optimization: {
       minimize: isProd,
@@ -37,9 +38,6 @@ module.exports = ({env}) => {
     resolve: {
       extensions: [".js", ".ts", ".tsx"],
       plugins: [new TSConfigPathsWebpackPlugin()],
-      alias: {
-        "@mui/styled-engine": "@mui/styled-engine-sc",
-      },
     },
     plugins: [
       new HTMLWebpackPlugin({
@@ -50,6 +48,7 @@ module.exports = ({env}) => {
       }),
       new ESLintWebpackPlugin({
         extensions: ["js", "ts", "tsx"],
+        emitWarning: false,
       }),
       new BundleAnalyzerWebpackPlugin({
         analyzerMode: false,
@@ -58,6 +57,12 @@ module.exports = ({env}) => {
     ],
     module: {
       rules: [
+        {
+          test: /\.js/,
+          resolve: {
+            fullySpecified: false,
+          },
+        },
         {
           test: /\.(ts|js)x?$/,
 
@@ -68,8 +73,29 @@ module.exports = ({env}) => {
           ],
         },
         {
-          test: /\.css$/,
+          test: /\.css$/i,
           use: ["style-loader", "css-loader"],
+        },
+        {
+          test: /\.s[ac]ss$/i,
+          use: [
+            "style-loader",
+            "css-loader",
+            {
+              loader: "resolve-url-loader",
+              options: {
+                debug: isDev,
+                silent: isDev,
+                root: path.resolve(__dirname, "./src"),
+              },
+            },
+            {
+              loader: "sass-loader",
+              options: {
+                implementation: require("sass"),
+              },
+            },
+          ],
         },
         {
           test: /\.(?:ico|gif|png|jpg|jpeg)$/,

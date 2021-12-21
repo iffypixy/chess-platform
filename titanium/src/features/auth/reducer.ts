@@ -15,7 +15,7 @@ interface AuthState {
 const initial: AuthState = {
   isAuthenticated: false,
   credentials: null,
-  isCredentialsFetchPending: false,
+  isCredentialsFetchPending: true,
   isLoginPending: false,
   isRegisterPending: false,
   isLogoutPending: false,
