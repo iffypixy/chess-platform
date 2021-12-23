@@ -29,6 +29,7 @@ import {
   OfferDrawDto,
   PremoveDto,
   RemovePremoveDto,
+  SpectateMatchDto,
 } from "./dtos/gateways";
 
 const serverEvents = {
@@ -40,18 +41,17 @@ const serverEvents = {
   DECLINE_DRAW: "decline-draw",
   PREMOVE: "make-premove",
   REMOVE_PREMOVE: "remove-premove",
+  SPECTATE_MATCH: "spectate-match",
 };
 
 const clientEvents = {
   MOVE: "move",
-  DRAW: "draw",
   MATCH_FOUND: "match-found",
-  VICTORY: "victory",
-  LOSE: "lose",
-  ABORT: "abort",
   DRAW_OFFER: "draw-offer",
   DRAW_OFFER_DECLINE: "draw-offer-decline",
   CLOCK: "clock",
+  RESULTATIVE_ENDING: "resultative-ending",
+  TIE_ENDING: "tie-ending",
 };
 
 interface QueueEntity {
@@ -158,74 +158,77 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           },
         };
 
+        const blacks = this.service.getSocketsByUserId(opponent.user._id);
+        const whites = this.service.getSocketsByUserId(user._id);
+
+        const sockets = [...blacks, ...whites];
+
+        sockets.forEach((socket) => socket.join(match.id));
+
+        const timeout = setTimeout(async () => {
+          const result = elo.calculateVictory({winner: opponent.rating, loser: rating});
+
+          await this.userService.updateOne(
+            {_id: Types.ObjectId(String(opponent.user._id))},
+            {[match.type]: {rating: result.winner}},
+          );
+
+          await this.userService.updateOne(
+            {_id: Types.ObjectId(String(user._id))},
+            {[match.type]: {rating: result.loser}},
+          );
+
+          const white = await this.matchPlayerService.create({
+            user: Types.ObjectId(String(user._id)),
+            rating: match.white.rating,
+            shift: -result.shift,
+            result: "lose",
+          });
+
+          const black = await this.matchPlayerService.create({
+            user: Types.ObjectId(String(opponent.user._id)),
+            rating: match.black.rating,
+            shift: result.shift,
+            result: "victory",
+          });
+
+          await this.matchService.create({
+            white,
+            black,
+            control,
+            type: match.type,
+            fen: match.fen,
+            pgn: match.pgn,
+            sid: match.id,
+            winner: black,
+          });
+
+          this.server.to(match.id).emit(clientEvents.RESULTATIVE_ENDING, {
+            matchId: match.id,
+            white: {
+              rating: result.loser,
+              shift: -result.shift,
+              result: "victory",
+            },
+            black: {
+              rating: result.winner,
+              shift: result.shift,
+              result: "lose",
+            },
+          });
+
+          await redis.del(`match:${match.id}`);
+        }, match.white.clock);
+
+        match.clockTimeout = timeout[Symbol.toPrimitive]();
+
         redis.set(`match:${match.id}`, JSON.stringify(match)).then((res) => {
           if (res !== "OK") return;
-
-          const sockets = [
-            ...this.service.getSocketsByUserId(user._id),
-            ...this.service.getSocketsByUserId(opponent.user._id),
-          ];
 
           redis.set("queue", JSON.stringify(queue)).then((res) => {
             if (res !== "OK") return;
 
-            const timeout = setTimeout(async () => {
-              const result = elo.calculateVictory({winner: opponent.rating, loser: rating});
-
-              await this.userService.updateOne(
-                {_id: Types.ObjectId(String(opponent.user._id))},
-                {[match.type]: {rating: result.winner}},
-              );
-
-              await this.userService.updateOne(
-                {_id: Types.ObjectId(String(user._id))},
-                {[match.type]: {rating: result.loser}},
-              );
-
-              const white = await this.matchPlayerService.create({
-                user: Types.ObjectId(String(user._id)),
-                rating: match.white.rating,
-                shift: -result.shift,
-                result: "lose",
-              });
-
-              const black = await this.matchPlayerService.create({
-                user: Types.ObjectId(String(opponent.user._id)),
-                rating: match.black.rating,
-                shift: result.shift,
-                result: "victory",
-              });
-
-              await this.matchService.create({
-                white,
-                black,
-                control,
-                type: match.type,
-                fen: match.fen,
-                pgn: match.pgn,
-                sid: match.id,
-                winner: black,
-              });
-
-              const winners = this.service.getSocketsByUserId(opponent.user._id);
-              const losers = this.service.getSocketsByUserId(user._id);
-
-              this.server.to(winners).emit(clientEvents.VICTORY, {
-                rating: result.winner,
-                shift: result.shift,
-              });
-
-              this.server.to(losers).emit(clientEvents.LOSE, {
-                rating: result.loser,
-                shift: -result.shift,
-              });
-
-              await redis.del(`match:${match.id}`);
-            }, match.white.clock);
-
-            match.clockTimeout = timeout[Symbol.toPrimitive]();
-
-            this.server.to(sockets).emit(clientEvents.MATCH_FOUND, {
+            this.server.to(match.id).emit(clientEvents.MATCH_FOUND, {
               match: {
                 id: match.id,
                 control: match.control,
@@ -233,6 +236,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
                 isDrawOfferValid: false,
                 type: match.type,
                 fen: match.fen,
+                isReal: true,
                 white: {
                   user: match.white.user.public,
                   rating: match.white.rating,
@@ -326,6 +330,8 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     const engine = new Chess(match.fen);
 
+    match.pgn && engine.load_pgn(match.pgn);
+
     const turn = () => (engine.turn() === "w" ? "white" : "black");
 
     const current = turn();
@@ -349,25 +355,23 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     const opposite = turn();
 
-    const opponents = this.service.getSocketsByUserId(match[opposite].id);
-    const self = this.service.getSocketsByUserId(match[current].id);
-
-    const sockets = [...opponents, ...self];
-
-    this.server.to(opponents).emit(clientEvents.MOVE, {
+    this.server.to(match.id).emit(clientEvents.MOVE, {
+      matchId: match.id,
       move: result,
+      from: current,
     });
 
-    this.server.to(sockets).emit(clientEvents.CLOCK, {
+    this.server.to(match.id).emit(clientEvents.CLOCK, {
+      matchId: match.id,
       clock: {
         white: match.white.clock,
         black: match.black.clock,
       },
     });
 
-    const isOver = engine.game_over();
+    match.last = Date.now();
 
-    const handleOver = async ({isOutOfTime}: {isOutOfTime: boolean}) => {
+    const handleOver = async () => {
       const {control, type} = match;
 
       const pgn = engine.pgn();
@@ -376,8 +380,11 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       const current = turn();
       const opposite = turn() === "white" ? "black" : "white";
 
-      const isResultative = engine.game_over() || isOutOfTime;
-      const isDraw = !isResultative;
+      const isDraw =
+        engine.in_draw() || engine.in_stalemate() || engine.in_threefold_repetition() || engine.insufficient_material();
+      const isResultative = !isDraw;
+
+      match[current].clock -= match.last;
 
       if (isResultative) {
         const winner = match[opposite];
@@ -422,17 +429,18 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           winner: isWinnerWhite ? white : black,
         });
 
-        const winners = this.service.getSocketsByUserId(winner.id);
-        const losers = this.service.getSocketsByUserId(loser.id);
-
-        this.server.to(winners).emit(clientEvents.VICTORY, {
-          rating: result.winner,
-          shift: result.shift,
-        });
-
-        this.server.to(losers).emit(clientEvents.LOSE, {
-          rating: result.loser,
-          shift: -result.shift,
+        this.server.to(match.id).emit(clientEvents.RESULTATIVE_ENDING, {
+          matchId: match.id,
+          [current]: {
+            rating: result.winner,
+            shift: result.shift,
+            result: "victory",
+          },
+          [opposite]: {
+            rating: result.loser,
+            shift: -result.shift,
+            result: "lose",
+          },
         });
       } else if (isDraw) {
         const [underdog, favourite] = [match[current], match[opposite]].sort((a, b) => a.rating - b.rating);
@@ -476,32 +484,34 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           winner: null,
         });
 
-        const underdogs = this.service.getSocketsByUserId(underdog.id);
-        const favourites = this.service.getSocketsByUserId(favourite.id);
-
-        this.server.to(underdogs).emit(clientEvents.DRAW, {
-          rating: result.underdog,
-          shift: result.shift,
-        });
-
-        this.server.to(favourites).emit(clientEvents.DRAW, {
-          rating: result.favourite,
-          shift: -result.shift,
+        this.server.to(match.id).emit(clientEvents.TIE_ENDING, {
+          matchId: match.id,
+          [underdog.side]: {
+            rating: result.underdog,
+            shift: result.shift,
+          },
+          [favourite.side]: {
+            rating: result.favourite,
+            shift: -result.shift,
+          },
         });
       }
 
-      this.server.to(sockets).emit(clientEvents.CLOCK, {
+      this.server.to(match.id).emit(clientEvents.CLOCK, {
+        matchId: match.id,
         clock: {
-          white: match.white.clock,
-          black: match.black.clock,
+          [current]: match[current].clock,
+          [opposite]: match[opposite].clock,
         },
       });
 
       await redis.del(`match:${match.id}`);
     };
 
+    const isOver = engine.game_over();
+
     if (isOver) {
-      await handleOver({isOutOfTime: false});
+      await handleOver();
 
       return acknowledgment.ok();
     }
@@ -514,11 +524,14 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       if (premove) {
         engine.set_comment(`clock:${match[opposite].clock}`);
 
-        this.server.to(self).emit(clientEvents.MOVE, {
+        this.server.to(match.id).emit(clientEvents.MOVE, {
+          matchId: match.id,
           move: premove,
+          from: opposite,
         });
 
-        this.server.to(sockets).emit(clientEvents.CLOCK, {
+        this.server.to(match.id).emit(clientEvents.CLOCK, {
+          matchId: match.id,
           clock: {
             white: match.white.clock,
             black: match.black.clock,
@@ -528,16 +541,14 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
         const isOver = engine.game_over();
 
         if (isOver) {
-          await handleOver({isOutOfTime: false});
+          await handleOver();
 
           return acknowledgment.ok();
         }
       }
     }
 
-    match.last = Date.now();
-
-    const timeout = setTimeout(() => handleOver({isOutOfTime: true}), match[turn()].clock);
+    const timeout = setTimeout(() => handleOver(), match[turn()].clock);
 
     match.clockTimeout = timeout[Symbol.toPrimitive]();
 
@@ -574,7 +585,6 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
     const result = elo.calculateVictory({winner: winner.rating, loser: loser.rating});
 
     await this.userService.updateOne({_id: Types.ObjectId(String(loser.id))}, {[type]: {rating: result.loser}});
-
     await this.userService.updateOne({_id: Types.ObjectId(String(winner.id))}, {[type]: {rating: result.winner}});
 
     const white = await this.matchPlayerService.create({
@@ -604,20 +614,22 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       winner: isWhite ? black : white,
     });
 
-    const losers = this.service.getSocketsByUserId(loser.id);
-    const winners = this.service.getSocketsByUserId(winner.id);
-
-    this.server.to(losers).emit(clientEvents.LOSE, {
-      rating: result.loser,
-      loss: -result.shift,
+    this.server.to(match.id).emit(clientEvents.RESULTATIVE_ENDING, {
+      matchId: match.id,
+      [winner.side]: {
+        rating: result.winner,
+        shift: result.shift,
+        result: "victory",
+      },
+      [loser.side]: {
+        rating: result.loser,
+        shift: -result.shift,
+        result: "lose",
+      },
     });
 
-    this.server.to(winners).emit(clientEvents.VICTORY, {
-      rating: result.winner,
-      gain: result.shift,
-    });
-
-    this.server.to([...winners, ...losers]).emit(clientEvents.CLOCK, {
+    this.server.to(match.id).emit(clientEvents.CLOCK, {
+      matchId: match.id,
       clock: {
         white: match.white.clock,
         black: match.black.clock,
@@ -647,7 +659,6 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
     if (!isParticipant) return acknowledgment.error({message: "You are not participant"});
 
     const self = isWhite ? match.white : match.black;
-    const opponent = isWhite ? match.black : match.white;
 
     if (match.isDrawOfferValid)
       return acknowledgment.error({message: "The draw offer from your opponent is still valid"});
@@ -657,9 +668,10 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
     self.hasOfferedDraw = true;
     match.isDrawOfferValid = true;
 
-    const opponents = this.service.getSocketsByUserId(opponent.id);
-
-    this.server.to(opponents).emit(clientEvents.DRAW_OFFER);
+    this.server.to(match.id).emit(clientEvents.DRAW_OFFER, {
+      matchId: match.id,
+      from: self.side,
+    });
 
     const timeout = setTimeout(async () => {
       const json = await redis.get(`match:${match.id}`);
@@ -737,20 +749,20 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       winner: null,
     });
 
-    const underdogs = this.service.getSocketsByUserId(underdog.id);
-    const favourites = this.service.getSocketsByUserId(favourite.id);
-
-    this.server.to(underdogs).emit(clientEvents.DRAW, {
-      rating: result.underdog,
-      shift: result.shift,
+    this.server.to(match.id).emit(clientEvents.TIE_ENDING, {
+      matchId: match.id,
+      [underdog.side]: {
+        rating: result.underdog,
+        shift: result.shift,
+      },
+      [favourite.side]: {
+        rating: result.favourite,
+        shift: -result.shift,
+      },
     });
 
-    this.server.to(favourites).emit(clientEvents.DRAW, {
-      rating: result.favourite,
-      shift: -result.shift,
-    });
-
-    this.server.to([...underdogs, ...favourites]).emit(clientEvents.CLOCK, {
+    this.server.to(match.id).emit(clientEvents.CLOCK, {
+      matchId: match.id,
       clock: {
         white: match.white.clock,
         black: match.black.clock,
@@ -783,10 +795,12 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     match.isDrawOfferValid = false;
 
-    const opponent = isWhite ? match.black : match.white;
-    const opponents = this.service.getSocketsByUserId(opponent.id);
+    const self = isWhite ? match.white : match.black;
 
-    this.server.to(opponents).emit(clientEvents.DRAW_OFFER_DECLINE);
+    this.server.to(match.id).emit(clientEvents.DRAW_OFFER_DECLINE, {
+      matchId: match.id,
+      from: self.side,
+    });
 
     redis.set(`match:${match.id}`, JSON.stringify(match));
 
@@ -860,6 +874,22 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
     match.premove = null;
 
     redis.set(`match:${match.id}`, JSON.stringify(match));
+
+    return acknowledgment.ok();
+  }
+
+  @SubscribeMessage(serverEvents.SPECTATE_MATCH)
+  async spectateMatch(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() body: SpectateMatchDto,
+  ): Promise<Acknowledgment> {
+    const json = await redis.get(`match:${body.matchId}`);
+
+    if (!json) return acknowledgment.error({message: "Invalid match"});
+
+    const match: MatchEntity = JSON.parse(json);
+
+    socket.join(match.id);
 
     return acknowledgment.ok();
   }

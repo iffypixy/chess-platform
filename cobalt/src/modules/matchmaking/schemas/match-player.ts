@@ -1,7 +1,7 @@
 import {Prop, Schema, SchemaFactory} from "@nestjs/mongoose";
-import {Types} from "mongoose";
+import {Types, Document} from "mongoose";
 
-import {User, UserDocument} from "@modules/user";
+import {User, UserDocument, UserPublicData} from "@modules/user";
 import {MatchResult} from "../typings";
 
 @Schema({versionKey: false, timestamps: true})
@@ -45,7 +45,15 @@ export interface MatchPlayerData {
   updatedAt: Date;
 }
 
-export type MatchPlayerDocument = MatchPlayerData & Document;
+export type MatchPlayerDocument = MatchPlayerData & Document & {public: MatchPlayerPublicData};
+
+export interface MatchPlayerPublicData {
+  id: string;
+  user: UserPublicData;
+  rating: number;
+  shift: number;
+  result: MatchResult;
+}
 
 export interface MatchPlayerCreationAttributes {
   user: Types.ObjectId | UserDocument;
@@ -53,3 +61,15 @@ export interface MatchPlayerCreationAttributes {
   result: MatchResult;
   shift: number;
 }
+
+MatchPlayerSchema.virtual("public").get(function (this: MatchPlayerDocument): MatchPlayerPublicData {
+  const {_id, user, rating, shift, result} = this;
+
+  return {
+    id: _id,
+    user: user.public,
+    rating,
+    shift,
+    result,
+  };
+});

@@ -1,10 +1,9 @@
 import {Prop, raw, Schema, SchemaFactory} from "@nestjs/mongoose";
 import {Types, Document} from "mongoose";
 
-import {UserPublicData} from "@modules/user";
 import {MATCH_TYPES} from "../lib/constants";
 import {MatchType, MatchControl} from "../typings";
-import {MatchPlayer, MatchPlayerDocument} from "./match-player";
+import {MatchPlayer, MatchPlayerDocument, MatchPlayerPublicData} from "./match-player";
 
 @Schema({versionKey: false, timestamps: true})
 export class Match {
@@ -90,9 +89,9 @@ export interface MatchData {
 
 export interface MatchPublicData {
   id: string;
-  white: UserPublicData;
-  black: UserPublicData;
-  winner: UserPublicData;
+  white: MatchPlayerPublicData;
+  black: MatchPlayerPublicData;
+  winner: MatchPlayerPublicData;
   pgn: string;
   type: MatchType;
   control: MatchControl;
@@ -119,9 +118,9 @@ MatchSchema.virtual("public").get(function (this: MatchDocument): MatchPublicDat
 
   return {
     id: _id,
-    white: white.user.public,
-    black: black.user.public,
-    winner: winner.user.public,
+    white: white.public,
+    black: black.public,
+    winner: winner.public,
     pgn,
     type,
     control,

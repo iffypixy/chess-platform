@@ -9,11 +9,11 @@ import {session} from "@lib/session";
 export class SocketIoService {
   public server: Server;
 
-  public getSocketsByUserId(id: Types.ObjectId): string[] {
-    const sockets: string[] = [];
+  public getSocketsByUserId(id: Types.ObjectId): Socket[] {
+    const sockets: Socket[] = [];
 
     for (const socket of this.server.sockets.sockets.values() as IterableIterator<Socket>) {
-      if (String(socket.request.session.user._id) === String(id)) sockets.push(socket.id);
+      if (String(socket.request.session.user._id) === String(id)) sockets.push(socket);
     }
 
     return sockets;

@@ -26,7 +26,7 @@ export class MatchmakingController {
   @Get(":matchId")
   async get(
     @Param("matchId") matchId: string,
-  ): Promise<{match: (MatchEntityPublic | MatchPublicData) & {isActual: boolean}}> {
+  ): Promise<{match: (MatchEntityPublic | MatchPublicData) & {isCompleted: boolean}}> {
     let json = await redis.get(`match:${matchId}`);
 
     if (json) {
@@ -58,7 +58,7 @@ export class MatchmakingController {
           clock: black.clock,
           hasOfferedDraw: black.hasOfferedDraw,
         },
-        isActual: true,
+        isCompleted: false,
       };
 
       entity[turn].clock = entity[turn].clock - (Date.now() - last);
@@ -97,7 +97,7 @@ export class MatchmakingController {
     return {
       match: {
         ...match.public,
-        isActual: false,
+        isCompleted: true,
       },
     };
   }
