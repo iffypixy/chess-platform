@@ -1,6 +1,6 @@
 import {createReducer, PayloadAction} from "@reduxjs/toolkit";
 
-import {Match} from "@shared/api/matches";
+import {Match, RealMatch} from "@shared/api/matches";
 import * as actions from "./actions";
 
 interface MatchState {

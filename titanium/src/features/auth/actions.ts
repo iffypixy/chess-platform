@@ -1,4 +1,5 @@
 import {createAsyncThunk} from "@reduxjs/toolkit";
+import {AxiosError} from "axios";
 
 import {
   authApi,
@@ -7,6 +8,7 @@ import {
   LoginResponse,
   RegisterData,
   RegisterResponse,
+  RegisterResponseError,
 } from "@shared/api/auth";
 
 const prefix = "auth";
@@ -26,10 +28,17 @@ export interface RegisterPayload extends RegisterResponse {}
 
 export const register = createAsyncThunk<RegisterPayload, RegisterData>(
   `${prefix}/register`,
-  async (args) => {
-    const {data} = await authApi.register(args);
+  async (args, {rejectWithValue}) => {
+    try {
+      const {data} = await authApi.register(args);
 
-    return data;
+      return data;
+    } catch (error) {
+      const message = (error as AxiosError<RegisterResponseError>)!.response!
+        .data.message;
+
+      return rejectWithValue(typeof message === "string" ? [message] : message);
+    }
   }
 );
 

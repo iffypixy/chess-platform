@@ -19,6 +19,11 @@ import {
   DeclineDrawData,
   RemovePremoveResponse,
   RemovePremoveData,
+  SpectateMatchResponse,
+  SpectateMatchData,
+  MatchSide,
+  SendMessageResponse,
+  SendMessageData,
 } from "@shared/api/matches";
 
 const prefix = "match";
@@ -100,13 +105,35 @@ export const declineDraw = createAsyncThunk<
   return data;
 });
 
-interface RemovePremovePayload extends RemovePremoveResponse {}
+export interface RemovePremovePayload extends RemovePremoveResponse {}
 
 export const removePremove = createAsyncThunk<
   RemovePremovePayload,
   RemovePremoveData
 >(`${prefix}/removePremove`, async (args) => {
   const data = await matchesApi.removePremove(args);
+
+  return data;
+});
+
+export interface SendMessagePayload extends SendMessageResponse {}
+
+export const sendMessage = createAsyncThunk<
+  SendMessagePayload,
+  SendMessageData
+>(`${prefix}/sendMessage`, async (args) => {
+  const data = await matchesApi.sendMessage(args);
+
+  return data;
+});
+
+interface SpectateMatchPayload extends SpectateMatchResponse {}
+
+export const spectateMatch = createAsyncThunk<
+  SpectateMatchPayload,
+  SpectateMatchData
+>(`${prefix}/spectateMatch`, async (args) => {
+  const data = await matchesApi.spectateMatch(args);
 
   return data;
 });

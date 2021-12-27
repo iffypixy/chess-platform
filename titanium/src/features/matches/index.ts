@@ -1,3 +1,3 @@
-export * as matchActions from "./actions";
-export * as matchSelectors from "./selectors";
-export {reducer as matchReducer} from "./reducer";
+export * as matchesActions from "./actions";
+export * as matchesSelectors from "./selectors";
+export {reducer as matchesReducer} from "./reducer";

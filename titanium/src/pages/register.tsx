@@ -17,8 +17,10 @@ import {Link} from "react-router-dom";
 import {useForm} from "react-hook-form";
 import * as yup from "yup";
 import {yupResolver} from "@hookform/resolvers/yup";
+import {unwrapResult} from "@reduxjs/toolkit";
+import {useSelector} from "react-redux";
 
-import {authActions} from "@features/auth";
+import {authActions, authSelectors} from "@features/auth";
 import {regex} from "@shared/lib/regex";
 import {useDispatch} from "@shared/lib/store";
 import {MainTemplate} from "@shared/ui/templates";
@@ -31,7 +33,7 @@ const schema = yup.object().shape({
       regex.alphaNumeric,
       "Username must contain only numbers and letters"
     )
-    .min(3, "Username must contain at least 3 characters"),
+    .min(3, "Username must contain at least 4 characters"),
   password: yup
     .string()
     .required("Password is required")
@@ -46,11 +48,11 @@ interface RegisterForm {
 export const RegisterPage: React.FC = () => {
   const dispatch = useDispatch();
 
-  const {
-    handleSubmit,
-    formState: {isSubmitting, errors},
-    register,
-  } = useForm<RegisterForm>({
+  const isPending = useSelector(authSelectors.isRegisterPending);
+
+  const [errors, setErrors] = React.useState([]);
+
+  const {handleSubmit, formState, register} = useForm<RegisterForm>({
     mode: "onChange",
     resolver: yupResolver(schema),
     defaultValues: {
@@ -60,7 +62,7 @@ export const RegisterPage: React.FC = () => {
   });
 
   const onSubmit = async (values: RegisterForm) => {
-    await dispatch(authActions.register(values));
+    dispatch(authActions.register(values)).then(unwrapResult).catch(setErrors);
   };
 
   return (
@@ -68,49 +70,81 @@ export const RegisterPage: React.FC = () => {
       <Center w="full" h="100vh">
         <form onSubmit={handleSubmit(onSubmit)}>
           <VStack w={[300, 400]} spacing={8}>
-            <Heading fontSize="3xl" fontWeight="bold">
+            <Heading color="text.secondary" fontSize="3xl" fontWeight="bold">
               Sign up
             </Heading>
 
             <VStack w="full" spacing={4}>
-              <FormControl id="username" isInvalid={!!errors.username}>
-                <FormLabel htmlFor="username" color="gray.500" fontSize="sm">
+              {errors.length > 0 && (
+                <VStack w="full" alignItems="flex-start">
+                  {errors.map((error, idx) => (
+                    <Text key={idx} fontSize="sm" color="error">
+                      {error}
+                    </Text>
+                  ))}
+                </VStack>
+              )}
+
+              <FormControl
+                id="username"
+                isInvalid={!!formState.errors.username}
+              >
+                <FormLabel
+                  htmlFor="username"
+                  color="text.secondary"
+                  fontSize="sm"
+                >
                   Username
                 </FormLabel>
                 <Input
                   id="username"
+                  color="text.secondary"
                   type="text"
                   placeholder="alex123"
-                  bg="gray.100"
-                  border="null"
+                  bg="primary"
+                  border="none"
+                  _placeholder={{
+                    color: "text.secondary",
+                  }}
                   {...register("username", {
                     required: "Username is required",
                   })}
                 />
-                {errors.username && (
+                {formState.errors.username && (
                   <FormErrorMessage fontSize="xs">
-                    {errors.username.message}
+                    {formState.errors.username.message}
                   </FormErrorMessage>
                 )}
               </FormControl>
 
-              <FormControl id="password" isInvalid={!!errors.password}>
-                <FormLabel htmlFor="password" color="gray.500" fontSize="sm">
+              <FormControl
+                id="password"
+                isInvalid={!!formState.errors.password}
+              >
+                <FormLabel
+                  htmlFor="password"
+                  color="text.secondary"
+                  fontSize="sm"
+                >
                   Password
                 </FormLabel>
                 <Input
+                  color="text.secondary"
                   id="password"
                   type="password"
                   placeholder="x x x x x x"
-                  bg="gray.100"
-                  border="null"
+                  bg="primary"
+                  border="none"
+                  _placeholder={{
+                    color: "text.secondary",
+                  }}
                   {...register("password", {
                     required: "Password is required",
                   })}
                 />
-                {errors.password && (
+                {formState.errors.password && (
                   <FormErrorMessage fontSize="xs">
-                    {errors.password.message}
+                    {formState.errors.password.message}
                   </FormErrorMessage>
                 )}
               </FormControl>
@@ -121,17 +155,17 @@ export const RegisterPage: React.FC = () => {
               justifyContent="space-between"
               alignItems="flex-start"
             >
-              <Text color="gray.500" fontSize="sm">
+              <Text color="text.secondary" fontSize="sm">
                 <Link to="/login">Have an account already?</Link>
               </Text>
               <Button
                 type="submit"
-                isLoading={isSubmitting}
+                isLoading={isPending}
+                bg="primary"
+                color="text.secondary"
                 w="120px"
-                bg="black"
-                color="white"
-                _hover={{bg: "black", color: "white"}}
-                _active={{bg: "black"}}
+                _hover={{bg: "primary"}}
+                _active={{bg: "primary"}}
               >
                 Register
               </Button>

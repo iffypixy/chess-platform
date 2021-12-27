@@ -1,33 +1,65 @@
 import {AxiosPromise} from "axios";
 import {Square} from "chess.js";
 
+import {serverEvents} from "@shared/lib/socket";
 import {emit, request} from "./request";
 import {User} from "./users";
 
-export interface Match {
+export type Match = RealMatch | CompletedMatch;
+
+export interface RealMatch {
   id: string;
-  white: MatchPlayer;
-  black: MatchPlayer;
+  white: RealMatchPlayer;
+  black: RealMatchPlayer;
   fen: string;
   pgn: string;
   type: MatchType;
   isDrawOfferValid: boolean;
   control: TimeControl;
+  isCompleted: false;
+}
+
+export interface CompletedMatch {
+  id: string;
+  white: CompletedMatchPlayer;
+  black: CompletedMatchPlayer;
+  winner: CompletedMatchPlayer | null;
+  pgn: string;
+  type: MatchType;
+  control: MatchControl;
+  isCompleted: true;
 }
 
 export type MatchType = "bullet" | "blitz" | "rapid" | "classical";
+
+export type MatchResult = "victory" | "lose" | "draw";
+
+export interface MatchControl {
+  time: number;
+  increment: number;
+  delay: number;
+}
 
 export interface MatchClock {
   white: number;
   black: number;
 }
 
-export interface MatchPlayer {
+export interface RealMatchPlayer {
   user: User;
   rating: number;
   side: MatchSide;
   clock: number;
   hasOfferedDraw: boolean;
+}
+
+export interface CompletedMatchPlayer {
+  id: string;
+  user: User;
+  rating: number;
+  shift: number;
+  result: MatchResult;
+  side: MatchSide;
 }
 
 export interface TimeControl {
@@ -50,7 +82,7 @@ export interface MakeMoveData {
 export interface MakeMoveResponse {}
 
 const makeMove = (data: MakeMoveData): Promise<MakeMoveResponse> =>
-  emit({event: "make-move", data});
+  emit({event: serverEvents.MAKE_MOVE, data});
 
 export interface ResignData {
   matchId: string;
@@ -59,7 +91,7 @@ export interface ResignData {
 export interface ResignResponse {}
 
 const resign = (data: ResignData): Promise<ResignResponse> =>
-  emit({event: "resign", data});
+  emit({event: serverEvents.RESIGN, data});
 
 export interface OfferDrawData {
   matchId: string;
@@ -68,7 +100,7 @@ export interface OfferDrawData {
 export interface OfferDrawResponse {}
 
 export const offerDraw = (data: OfferDrawData): Promise<OfferDrawResponse> =>
-  emit({event: "offer-draw", data});
+  emit({event: serverEvents.OFFER_DRAW, data});
 
 export interface DeclineDrawData {
   matchId: string;
@@ -78,7 +110,8 @@ export interface DeclineDrawResponse {}
 
 export const declineDraw = (
   data: DeclineDrawData
-): Promise<DeclineDrawResponse> => emit({event: "decline-draw", data});
+): Promise<DeclineDrawResponse> =>
+  emit({event: serverEvents.DECLINE_DRAW, data});
 
 export interface AcceptDrawData {
   matchId: string;
@@ -87,7 +120,7 @@ export interface AcceptDrawData {
 export interface AcceptDrawResponse {}
 
 export const acceptDraw = (data: AcceptDrawData): Promise<AcceptDrawResponse> =>
-  emit({event: "accept-draw", data});
+  emit({event: serverEvents.ACCEPT_DRAW, data});
 
 export interface MakePremoveData {
   matchId: string;
@@ -100,7 +133,7 @@ export interface MakePremoveResponse {}
 
 export const makePremove = (
   data: MakePremoveData
-): Promise<MakePremoveResponse> => emit({event: "make-premove", data});
+): Promise<MakePremoveResponse> => emit({event: serverEvents.PREMOVE, data});
 
 export interface RemovePremoveData {
   matchId: string;
@@ -110,7 +143,19 @@ export interface RemovePremoveResponse {}
 
 export const removePremove = (
   data: RemovePremoveData
-): Promise<RemovePremoveResponse> => emit({event: "remove-premove", data});
+): Promise<RemovePremoveResponse> =>
+  emit({event: serverEvents.REMOVE_PREMOVE, data});
+
+export interface SpectateMatchData {
+  matchId: string;
+}
+
+export interface SpectateMatchResponse {}
+
+export const spectateMatch = (
+  data: SpectateMatchData
+): Promise<SpectateMatchResponse> =>
+  emit({event: serverEvents.SPECTATE_MATCH, data});
 
 export interface GetMatchData {
   matchId: string;
@@ -126,6 +171,19 @@ const getMatch = (data: GetMatchData): AxiosPromise<GetMatchResponse> =>
     url: `/api/matches/${data.matchId}`,
   });
 
+export interface SendMessageData {
+  matchId: string;
+  text: string;
+}
+
+export interface SendMessageResponse {}
+
+const sendMessage = (data: SendMessageData): Promise<SendMessageResponse> =>
+  emit({
+    event: serverEvents.SEND_MESSAGE,
+    data,
+  });
+
 export const matchesApi = {
   makeMove,
   resign,
@@ -135,4 +193,6 @@ export const matchesApi = {
   declineDraw,
   offerDraw,
   removePremove,
+  spectateMatch,
+  sendMessage,
 };

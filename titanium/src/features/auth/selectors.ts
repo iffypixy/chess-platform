@@ -8,3 +8,6 @@ export const isCredentialsFetchPending = (state: RootStore) =>
 
 export const isAuthenticated = (state: RootStore) =>
   authState(state).isAuthenticated;
+
+export const isRegisterPending = (state: RootStore) =>
+  authState(state).isRegisterPending;

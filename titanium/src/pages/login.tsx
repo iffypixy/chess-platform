@@ -57,21 +57,29 @@ export const LoginPage: React.FC = () => {
       <Center w="full" h="100vh">
         <form onSubmit={handleSubmit(onSubmit)}>
           <VStack w={[300, 400]} spacing={8}>
-            <Heading fontSize="3xl" fontWeight="bold">
+            <Heading color="text.secondary" fontSize="3xl" fontWeight="bold">
               Sign in
             </Heading>
 
             <VStack w="full" spacing={4}>
               <FormControl id="username" isInvalid={!!errors.username}>
-                <FormLabel htmlFor="username" color="gray.500" fontSize="sm">
+                <FormLabel
+                  htmlFor="username"
+                  color="text.secondary"
+                  fontSize="sm"
+                >
                   Username
                 </FormLabel>
                 <Input
                   id="username"
                   type="text"
                   placeholder="alex123"
-                  bg="gray.100"
-                  border="null"
+                  bg="primary"
+                  color="text.secondary"
+                  border="none"
+                  _placeholder={{
+                    color: "text.secondary",
+                  }}
                   {...register("username", {
                     required: true,
                   })}
@@ -84,15 +92,23 @@ export const LoginPage: React.FC = () => {
               </FormControl>
 
               <FormControl id="password" isInvalid={!!errors.password}>
-                <FormLabel htmlFor="password" color="gray.500" fontSize="sm">
+                <FormLabel
+                  htmlFor="password"
+                  color="text.secondary"
+                  fontSize="sm"
+                >
                   Password
                 </FormLabel>
                 <Input
                   id="password"
                   type="password"
                   placeholder="x x x x x x"
-                  bg="gray.100"
-                  border="null"
+                  bg="primary"
+                  color="text.secondary"
+                  border="none"
+                  _placeholder={{
+                    color: "text.secondary",
+                  }}
                   {...register("password", {
                     required: true,
                   })}
@@ -110,17 +126,17 @@ export const LoginPage: React.FC = () => {
               justifyContent="space-between"
               alignItems="flex-start"
             >
-              <Text color="gray.500" fontSize="sm">
+              <Text color="text.secondary" fontSize="sm">
                 <Link to="/register">Have not an account yet?</Link>
               </Text>
               <Button
                 type="submit"
                 isLoading={isSubmitting}
                 w="120px"
-                bg="black"
-                color="white"
-                _hover={{bg: "black", color: "white"}}
-                _active={{bg: "black"}}
+                bg="primary"
+                color="text.secondary"
+                _hover={{bg: "primary"}}
+                _active={{bg: "primary"}}
               >
                 Login
               </Button>

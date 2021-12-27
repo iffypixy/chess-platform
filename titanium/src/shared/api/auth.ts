@@ -1,4 +1,4 @@
-import {AxiosPromise} from "axios";
+import {AxiosError, AxiosPromise} from "axios";
 
 import {request} from "./request";
 
@@ -46,6 +46,10 @@ export interface RegisterData {
 
 export interface RegisterResponse {
   credentials: Credentials;
+}
+
+export interface RegisterResponseError {
+  message: string[];
 }
 
 const register = (data: RegisterData): AxiosPromise<RegisterResponse> =>
