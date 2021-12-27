@@ -66,7 +66,6 @@ export class Match {
   @Prop({
     type: Types.ObjectId,
     ref: MatchPlayer.name,
-    required: true,
   })
   winner: Types.ObjectId;
 }
@@ -78,7 +77,7 @@ export interface MatchData {
   sid: string;
   white: MatchPlayerDocument;
   black: MatchPlayerDocument;
-  winner: MatchPlayerDocument;
+  winner: MatchPlayerDocument | null;
   pgn: string;
   fen: string;
   type: MatchType;
@@ -91,7 +90,7 @@ export interface MatchPublicData {
   id: string;
   white: MatchPlayerPublicData;
   black: MatchPlayerPublicData;
-  winner: MatchPlayerPublicData;
+  winner: MatchPlayerPublicData | null;
   pgn: string;
   type: MatchType;
   control: MatchControl;
@@ -110,7 +109,7 @@ export interface MatchCreationAttributes {
   fen: string;
   control: MatchControl;
   type: MatchType;
-  winner: Types.ObjectId | MatchPlayerDocument;
+  winner: Types.ObjectId | MatchPlayerDocument | null;
 }
 
 MatchSchema.virtual("public").get(function (this: MatchDocument): MatchPublicData {
@@ -120,7 +119,7 @@ MatchSchema.virtual("public").get(function (this: MatchDocument): MatchPublicDat
     id: _id,
     white: white.public,
     black: black.public,
-    winner: winner.public,
+    winner: winner && winner.public,
     pgn,
     type,
     control,

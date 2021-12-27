@@ -30,6 +30,7 @@ import {
   PremoveDto,
   RemovePremoveDto,
   SpectateMatchDto,
+  SendMessageDto,
 } from "./dtos/gateways";
 
 const serverEvents = {
@@ -42,6 +43,7 @@ const serverEvents = {
   PREMOVE: "make-premove",
   REMOVE_PREMOVE: "remove-premove",
   SPECTATE_MATCH: "spectate-match",
+  SEND_MESSAGE: "send-message",
 };
 
 const clientEvents = {
@@ -49,9 +51,12 @@ const clientEvents = {
   MATCH_FOUND: "match-found",
   DRAW_OFFER: "draw-offer",
   DRAW_OFFER_DECLINE: "draw-offer-decline",
+  DRAW_OFFER_ACCEPT: "draw-offer-accept",
   CLOCK: "clock",
   RESULTATIVE_ENDING: "resultative-ending",
   TIE_ENDING: "tie-ending",
+  MESSAGE: "message",
+  RESIGNED: "resigned",
 };
 
 interface QueueEntity {
@@ -135,8 +140,6 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           pgn: null,
           premove: null,
           clockTimeout: null,
-          drawOfferTimeout: null,
-          isDrawOfferValid: false,
           type: controlToType(control),
           fen: NOTATION.INITIAL,
           last: Date.now(),
@@ -147,6 +150,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
             side: "white",
             clock: control.time,
             hasOfferedDraw: false,
+            isDrawOfferValid: false,
           },
           black: {
             id: opponent.user._id,
@@ -155,11 +159,12 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
             side: "black",
             clock: control.time,
             hasOfferedDraw: false,
+            isDrawOfferValid: false,
           },
         };
 
-        const blacks = this.service.getSocketsByUserId(opponent.user._id);
         const whites = this.service.getSocketsByUserId(user._id);
+        const blacks = this.service.getSocketsByUserId(opponent.user._id);
 
         const sockets = [...blacks, ...whites];
 
@@ -183,6 +188,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
             rating: match.white.rating,
             shift: -result.shift,
             result: "lose",
+            side: "white",
           });
 
           const black = await this.matchPlayerService.create({
@@ -190,6 +196,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
             rating: match.black.rating,
             shift: result.shift,
             result: "victory",
+            side: "black",
           });
 
           await this.matchService.create({
@@ -208,12 +215,20 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
             white: {
               rating: result.loser,
               shift: -result.shift,
-              result: "victory",
+              result: "lose",
             },
             black: {
               rating: result.winner,
               shift: result.shift,
-              result: "lose",
+              result: "victory",
+            },
+          });
+
+          this.server.to(match.id).emit(clientEvents.CLOCK, {
+            matchId: match.id,
+            clock: {
+              white: 0,
+              black: match.black.clock,
             },
           });
 
@@ -230,8 +245,8 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
             this.server.to(match.id).emit(clientEvents.MATCH_FOUND, {
               match: {
+                control,
                 id: match.id,
-                control: match.control,
                 pgn: null,
                 isDrawOfferValid: false,
                 type: match.type,
@@ -284,9 +299,9 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
     const actual = await this.userService.findById(Types.ObjectId(String(user._id)));
 
     const control: MatchControl = {
-      delay: body.delay * 1000,
-      increment: body.increment * 1000,
-      time: body.time * 60 * 1000,
+      delay: body.delay,
+      increment: body.increment,
+      time: body.time,
     };
 
     const jsons = await redis.get("queue");
@@ -355,6 +370,15 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     const opposite = turn();
 
+    if (match[opposite].isDrawOfferValid) {
+      match[opposite].isDrawOfferValid = false;
+
+      this.server.to(match.id).emit(clientEvents.DRAW_OFFER_DECLINE, {
+        from: current,
+        matchId: match.id,
+      });
+    }
+
     this.server.to(match.id).emit(clientEvents.MOVE, {
       matchId: match.id,
       move: result,
@@ -377,18 +401,20 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       const pgn = engine.pgn();
       const fen = engine.fen();
 
-      const current = turn();
-      const opposite = turn() === "white" ? "black" : "white";
-
       const isDraw =
         engine.in_draw() || engine.in_stalemate() || engine.in_threefold_repetition() || engine.insufficient_material();
       const isResultative = !isDraw;
 
-      match[current].clock -= match.last;
+      const isOutOfTime = isResultative && !engine.in_checkmate();
+
+      const win = turn() === "white" ? "black" : "white";
+      const lose = turn();
+
+      if (isOutOfTime) match[lose].clock = match[lose].clock - (Date.now() - match.last);
 
       if (isResultative) {
-        const winner = match[opposite];
-        const loser = match[current];
+        const winner = match[win];
+        const loser = match[lose];
 
         const result = elo.calculateVictory({winner: winner.rating, loser: loser.rating});
 
@@ -409,6 +435,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           rating: match.white.rating,
           shift: isWinnerWhite ? result.shift : -result.shift,
           result: isWinnerWhite ? "victory" : "lose",
+          side: "white",
         });
 
         const black = await this.matchPlayerService.create({
@@ -416,6 +443,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           rating: match.black.rating,
           shift: isWinnerWhite ? -result.shift : result.shift,
           result: isWinnerWhite ? "lose" : "victory",
+          side: "black",
         });
 
         await this.matchService.create({
@@ -431,19 +459,19 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
         this.server.to(match.id).emit(clientEvents.RESULTATIVE_ENDING, {
           matchId: match.id,
-          [current]: {
+          [winner.side]: {
             rating: result.winner,
             shift: result.shift,
             result: "victory",
           },
-          [opposite]: {
+          [loser.side]: {
             rating: result.loser,
             shift: -result.shift,
             result: "lose",
           },
         });
       } else if (isDraw) {
-        const [underdog, favourite] = [match[current], match[opposite]].sort((a, b) => a.rating - b.rating);
+        const [underdog, favourite] = [match.white, match.black].sort((a, b) => a.rating - b.rating);
 
         const result = elo.calculateDraw({underdog: underdog.rating, favourite: favourite.rating});
 
@@ -464,6 +492,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           rating: match.white.rating,
           shift: isUnderdogWhite ? result.shift : -result.shift,
           result: "draw",
+          side: "white",
         });
 
         const black = await this.matchPlayerService.create({
@@ -471,6 +500,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           rating: match.black.rating,
           shift: isUnderdogWhite ? -result.shift : result.shift,
           result: "draw",
+          side: "black",
         });
 
         await this.matchService.create({
@@ -489,10 +519,12 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
           [underdog.side]: {
             rating: result.underdog,
             shift: result.shift,
+            result: "draw",
           },
           [favourite.side]: {
             rating: result.favourite,
             shift: -result.shift,
+            result: "draw",
           },
         });
       }
@@ -500,8 +532,8 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       this.server.to(match.id).emit(clientEvents.CLOCK, {
         matchId: match.id,
         clock: {
-          [current]: match[current].clock,
-          [opposite]: match[opposite].clock,
+          [win]: match[win].clock,
+          [lose]: match[lose].clock,
         },
       });
 
@@ -523,6 +555,15 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
       if (premove) {
         engine.set_comment(`clock:${match[opposite].clock}`);
+
+        if (match[current].isDrawOfferValid) {
+          match[current].isDrawOfferValid = false;
+
+          this.server.to(match.id).emit(clientEvents.DRAW_OFFER_DECLINE, {
+            matchId: match.id,
+            from: opposite,
+          });
+        }
 
         this.server.to(match.id).emit(clientEvents.MOVE, {
           matchId: match.id,
@@ -577,10 +618,17 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     if (!isParticipant) return acknowledgment.error({message: "You are not participant"});
 
-    const {type, control} = match;
+    const {type, control, clockTimeout} = match;
+
+    clearInterval(clockTimeout);
 
     const loser = isWhite ? match.white : match.black;
     const winner = isWhite ? match.black : match.white;
+
+    this.server.to(match.id).emit(clientEvents.RESIGNED, {
+      matchId: match.id,
+      from: loser.side,
+    });
 
     const result = elo.calculateVictory({winner: winner.rating, loser: loser.rating});
 
@@ -592,6 +640,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       rating: match.white.rating,
       shift: isWhite ? -result.shift : result.shift,
       result: isWhite ? "lose" : "victory",
+      side: "white",
     });
 
     const black = await this.matchPlayerService.create({
@@ -599,9 +648,12 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       rating: match.black.rating,
       shift: isBlack ? -result.shift : result.shift,
       result: isBlack ? "lose" : "victory",
+      side: "black",
     });
 
     const engine = new Chess(match.fen);
+
+    match.pgn && engine.load_pgn(match.pgn);
 
     await this.matchService.create({
       white,
@@ -660,32 +712,15 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     const self = isWhite ? match.white : match.black;
 
-    if (match.isDrawOfferValid)
-      return acknowledgment.error({message: "The draw offer from your opponent is still valid"});
-
     if (self.hasOfferedDraw) return acknowledgment.error({message: "You have already offered a draw"});
 
     self.hasOfferedDraw = true;
-    match.isDrawOfferValid = true;
+    self.isDrawOfferValid = true;
 
     this.server.to(match.id).emit(clientEvents.DRAW_OFFER, {
       matchId: match.id,
       from: self.side,
     });
-
-    const timeout = setTimeout(async () => {
-      const json = await redis.get(`match:${match.id}`);
-
-      if (!json) return;
-
-      const entity: MatchEntity = JSON.parse(json);
-
-      entity.isDrawOfferValid = false;
-
-      redis.set(`match:${entity.id}`, JSON.stringify(entity));
-    }, MATCHMAKING.DRAW_OFFER_DURATION);
-
-    match.clockTimeout = timeout[Symbol.toPrimitive]();
 
     redis.set(`match:${match.id}`, JSON.stringify(match));
 
@@ -709,7 +744,17 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     if (!isParticipant) return acknowledgment.error({message: "You are not participant"});
 
-    if (!match.isDrawOfferValid) return acknowledgment.error({message: "Draw offer is not valid"});
+    const self = isWhite ? match.white : match.black;
+    const opponent = isWhite ? match.black : match.white;
+
+    if (!opponent.isDrawOfferValid) return acknowledgment.error({message: "Draw offer is not valid"});
+
+    clearInterval(match.clockTimeout);
+
+    this.server.to(match.id).emit(clientEvents.DRAW_OFFER_ACCEPT, {
+      matchId: match.id,
+      from: self.side,
+    });
 
     const {type, control} = match;
 
@@ -727,6 +772,7 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       rating: match.white.rating,
       shift: isUnderdogWhite ? result.shift : -result.shift,
       result: "draw",
+      side: "white",
     });
 
     const black = await this.matchPlayerService.create({
@@ -734,9 +780,12 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       rating: match.black.rating,
       shift: isUnderdogWhite ? -result.shift : result.shift,
       result: "draw",
+      side: "black",
     });
 
     const engine = new Chess(match.fen);
+
+    match.pgn && engine.load_pgn(match.pgn);
 
     await this.matchService.create({
       white,
@@ -754,10 +803,12 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       [underdog.side]: {
         rating: result.underdog,
         shift: result.shift,
+        result: "draw",
       },
       [favourite.side]: {
         rating: result.favourite,
         shift: -result.shift,
+        result: "draw",
       },
     });
 
@@ -791,9 +842,11 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     if (!isParticipant) return acknowledgment.error({message: "You are not participant"});
 
-    if (!match.isDrawOfferValid) return acknowledgment.error({message: "Draw offer is not valid"});
+    const opponent = isWhite ? match.black : match.white;
 
-    match.isDrawOfferValid = false;
+    if (!opponent.isDrawOfferValid) return acknowledgment.error({message: "Draw offer is not valid"});
+
+    opponent.isDrawOfferValid = false;
 
     const self = isWhite ? match.white : match.black;
 
@@ -890,6 +943,20 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
     const match: MatchEntity = JSON.parse(json);
 
     socket.join(match.id);
+
+    return acknowledgment.ok();
+  }
+
+  @SubscribeMessage(serverEvents.SEND_MESSAGE)
+  async sendMessage(@ConnectedSocket() socket: Socket, @MessageBody() body: SendMessageDto) {
+    const {user} = socket.request.session;
+
+    const actual = await this.userService.findById(Types.ObjectId(String(user._id)));
+
+    this.server.to(body.matchId).emit(clientEvents.MESSAGE, {
+      sender: actual.public,
+      text: body.text,
+    });
 
     return acknowledgment.ok();
   }

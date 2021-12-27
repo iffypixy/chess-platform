@@ -32,16 +32,15 @@ export class MatchmakingController {
     if (json) {
       const match: MatchEntity = JSON.parse(json);
 
-      const {id, control, pgn, type, fen, white, black, isDrawOfferValid, last} = match;
+      const {id, control, pgn, type, fen, white, black, last} = match;
 
       const engine = new Chess(fen);
       const turn = engine.turn() === "w" ? "white" : "black";
 
-      const entity = {
+      const entity: MatchEntityPublic & {isCompleted: boolean} = {
         id,
         control,
         pgn,
-        isDrawOfferValid,
         type,
         fen,
         white: {
@@ -50,6 +49,7 @@ export class MatchmakingController {
           side: white.side,
           clock: white.clock,
           hasOfferedDraw: white.hasOfferedDraw,
+          isDrawOfferValid: white.isDrawOfferValid,
         },
         black: {
           user: this.userService.hydrate(black.user).public,
@@ -57,6 +57,7 @@ export class MatchmakingController {
           side: black.side,
           clock: black.clock,
           hasOfferedDraw: black.hasOfferedDraw,
+          isDrawOfferValid: black.isDrawOfferValid,
         },
         isCompleted: false,
       };

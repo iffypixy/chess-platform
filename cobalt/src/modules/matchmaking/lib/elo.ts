@@ -37,14 +37,12 @@ interface CalculateDrawReturn {
 
 const calculateDraw = ({underdog, favourite}: CalculateDrawData): CalculateDrawReturn => {
   const difference = Math.abs(underdog - favourite);
-  const shift = Math.round(difference / 5);
-
-  const change = MATCHMAKING.RATING_GAIN + shift;
+  const shift = Math.round(difference / 20);
 
   return {
-    underdog: underdog + change,
-    favourite: favourite - change,
-    shift: change,
+    underdog: underdog + shift,
+    favourite: favourite - shift,
+    shift,
   };
 };
 

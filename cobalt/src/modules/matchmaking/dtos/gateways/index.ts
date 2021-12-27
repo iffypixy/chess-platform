@@ -7,3 +7,4 @@ export {OfferDrawDto} from "./offer-draw.dto";
 export {PremoveDto} from "./premove.dto";
 export {RemovePremoveDto} from "./remove-premove.dto";
 export {SpectateMatchDto} from "./spectate-match.dto";
+export {SendMessageDto} from "./send-message.dto";

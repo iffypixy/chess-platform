@@ -26,9 +26,7 @@ export interface MatchEntity {
   last: number;
   control: MatchControl;
   type: MatchType;
-  isDrawOfferValid: boolean;
   premove: ShortMove | null;
-  drawOfferTimeout: number | null;
   clockTimeout: number | null;
 }
 
@@ -39,6 +37,7 @@ export interface MatchPlayerEntity {
   rating: number;
   side: MatchSide;
   hasOfferedDraw: boolean;
+  isDrawOfferValid: boolean;
 }
 
 export interface MatchEntityPublic {
@@ -49,7 +48,6 @@ export interface MatchEntityPublic {
   fen: string;
   white: MatchEntityPlayerPublic;
   black: MatchEntityPlayerPublic;
-  isDrawOfferValid: boolean;
 }
 
 export interface MatchEntityPlayerPublic {
@@ -58,4 +56,5 @@ export interface MatchEntityPlayerPublic {
   rating: number;
   clock: number;
   hasOfferedDraw: boolean;
+  isDrawOfferValid: boolean;
 }

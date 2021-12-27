@@ -86,7 +86,7 @@ export class User extends Model {
       },
     }),
   )
-  classic: ControlMode;
+  classical: ControlMode;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
