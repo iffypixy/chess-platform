@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../src/lib/socket.io/acknowledgment/index.ts"],"names":[],"mappings":";;;AASa,QAAA,cAAc,GAAG;IAC5B,EAAE,EAAE,CAAC,UAAiC,EAAE,EAAkB,EAAE,CAAC,iBAC3D,MAAM,EAAE,IAAI,IACT,OAAO,EACV;IAEF,KAAK,EAAE,CAAC,UAAiC,EAAE,EAAkB,EAAE,CAAC,iBAC9D,MAAM,EAAE,OAAO,IACZ,OAAO,EACV;CACH,CAAC"}

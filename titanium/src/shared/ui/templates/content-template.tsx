@@ -1,25 +1,18 @@
 import * as React from "react";
-import {Container, Flex, Text, Box, Divider, VStack} from "@chakra-ui/layout";
-import {
-  Icon,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverBody,
-} from "@chakra-ui/react";
-import {MdExpandMore, MdSettings, MdLogout} from "react-icons/md";
-import {Link} from "react-router-dom";
+import {Container, Flex, Text, Box} from "@chakra-ui/layout";
+import {Icon} from "@chakra-ui/react";
+import {MdOutlineWhatshot} from "react-icons/md";
+import BoringAvatar from "boring-avatars";
+import {useSelector} from "react-redux";
 
-import {UserAvatar} from "@features/users";
+import {authSelectors} from "@features/auth";
 import {MainTemplate} from "./main-template";
+import {Link} from "react-router-dom";
 
 const headerHeight = 100;
 
 const Header: React.FC = () => {
-  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
-
-  const toggleProfile = () => setIsProfileOpen(!isProfileOpen);
-  const closeProfile = () => setIsProfileOpen(false);
+  const credentials = useSelector(authSelectors.credentials)!;
 
   return (
     <Flex
@@ -29,134 +22,24 @@ const Header: React.FC = () => {
       alignItems="center"
       justifyContent="space-between"
       boxShadow="sm"
-      pl={[0, 5, 10, 20]}
-      pr={[0, 5, 10, 20]}
+      pl={[5, 10, 15, 20]}
+      pr={[5, 10, 15, 20]}
     >
       <Container maxW="container.xl">
-        <Flex justifyContent="space-between" alignItems="center">
-          <Text fontWeight="bold" fontSize={["xl", "3xl", "4xl", "5xl"]}>
-            Rechess
-          </Text>
+        <Flex w="full" alignItems="center" justifyContent="space-between">
+          <Link to="/">
+            <Icon w="40px" h="40px" fill="secondary" as={MdOutlineWhatshot} />
+          </Link>
 
-          <Popover
-            placement="bottom-end"
-            onClose={closeProfile}
-            isOpen={isProfileOpen}
-          >
-            <PopoverTrigger>
-              <Flex
-                alignItems="center"
-                cursor="pointer"
-                role="group"
-                tabIndex={0}
-                onClick={toggleProfile}
-              >
-                <Text
-                  fontSize={["md", "xl"]}
-                  maxW={250}
-                  isTruncated
-                  mr={2}
-                  _groupHover={{color: "gray.400"}}
-                >
-                  ansatjrt
-                </Text>
-                <Icon
-                  as={MdExpandMore}
-                  w={5}
-                  h={5}
-                  transitionDuration="0.2s"
-                  transitionTimingFunction="linear"
-                  transitionProperty="transform"
-                  transform={`rotate(${isProfileOpen ? 180 : 0}deg)`}
-                  _groupHover={{fill: "gray.400"}}
-                />
-              </Flex>
-            </PopoverTrigger>
-
-            <PopoverContent w={[250, 300]}>
-              <PopoverBody w="full" p={3}>
-                <VStack w="full" spacing={2}>
-                  <Box w="full">
-                    <Link to="@/ansatjrt">
-                      <Flex
-                        w="full"
-                        alignItems="center"
-                        borderRadius="lg"
-                        transitionDuration="0.2s"
-                        transitionTimingFunction="linear"
-                        transitionProperty="background"
-                        _hover={{bg: "gray.100"}}
-                        pt={3}
-                        pb={3}
-                        pl={4}
-                        pr={4}
-                      >
-                        <UserAvatar url="https://bit.ly/30adjXU" size="md" />
-
-                        <Flex flexDirection="column" ml={3}>
-                          <Text fontSize={["lg"]} fontWeight="bold">
-                            ansatjrt
-                          </Text>
-                          <Text color="gray.500" fontSize={["md"]}>
-                            Go to the profile
-                          </Text>
-                        </Flex>
-                      </Flex>
-                    </Link>
-                  </Box>
-
-                  <Divider borderBottomWidth={3} />
-
-                  <Box w="full">
-                    <Link to="settings">
-                      <Flex
-                        w="full"
-                        alignItems="center"
-                        borderRadius="lg"
-                        transitionDuration="0.2s"
-                        transitionTimingFunction="linear"
-                        transitionProperty="background"
-                        _hover={{bg: "gray.100"}}
-                        pt={2}
-                        pb={2}
-                        pl={4}
-                        pr={4}
-                      >
-                        <Icon fill="gray.500" as={MdSettings} w={7} h={7} />
-                        <Text color="gray.500" ml={5}>
-                          Settings
-                        </Text>
-                      </Flex>
-                    </Link>
-                  </Box>
-
-                  <Divider borderBottomWidth={3} />
-
-                  <Box w="full">
-                    <Flex
-                      role="button"
-                      w="full"
-                      alignItems="center"
-                      borderRadius="lg"
-                      transitionDuration="0.2s"
-                      transitionTimingFunction="linear"
-                      transitionProperty="background"
-                      _hover={{bg: "gray.100"}}
-                      pt={2}
-                      pb={2}
-                      pl={4}
-                      pr={4}
-                    >
-                      <Icon fill="gray.500" as={MdLogout} w={7} h={7} />
-                      <Text color="gray.500" ml={5}>
-                        Log out
-                      </Text>
-                    </Flex>
-                  </Box>
-                </VStack>
-              </PopoverBody>
-            </PopoverContent>
-          </Popover>
+          <Link to={`/@/${credentials.username}`}>
+            <BoringAvatar
+              colors={["#EBE5B2", "#F6F3C2", "#F7C69F", "#F89B7E", "#B5A28B"]}
+              size={50}
+              variant="beam"
+              name={credentials.username}
+              square={true}
+            />
+          </Link>
         </Flex>
       </Container>
     </Flex>
@@ -172,8 +55,8 @@ export const ContentTemplate: React.FC<ContentTemplateProps> = ({
   footer,
   children,
 }) => (
-  <MainTemplate footer={footer}>
-    <Box w="full" h={0} minH="100vh">
+  <MainTemplate header={<Header />} footer={footer}>
+    <Box w="full" h="full">
       {children}
     </Box>
   </MainTemplate>

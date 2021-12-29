@@ -58,6 +58,7 @@
     "@hookform/resolvers": "^2.8.4",
     "@reduxjs/toolkit": "^1.6.2",
     "axios": "^0.24.0",
+    "boring-avatars": "^1.6.1",
     "chess.js": "^0.12.0",
     "chessground": "^8.1.7",
     "dayjs": "^1.10.7",

@@ -25,6 +25,8 @@ export interface CompletedMatch {
   black: CompletedMatchPlayer;
   winner: CompletedMatchPlayer | null;
   pgn: string;
+  fen: string;
+  sid: string;
   type: MatchType;
   control: MatchControl;
   isCompleted: true;

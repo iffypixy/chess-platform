@@ -1,7 +1,7 @@
 import * as React from "react";
 import {useSelector} from "react-redux";
+import Avatar from "boring-avatars";
 import {
-  Avatar,
   Box,
   Center,
   Container,
@@ -14,8 +14,11 @@ import {
   Text,
   VStack,
   Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
 } from "@chakra-ui/react";
-import {useParams, useNavigate} from "react-router-dom";
+import {useParams, useNavigate, Link} from "react-router-dom";
 import {
   MdFastRewind,
   MdFastForward,
@@ -41,7 +44,7 @@ import {matchmakingActions} from "@features/matchmaking";
 import {useDispatch} from "@shared/lib/store";
 import {User} from "@shared/api/users";
 import {INITIAL_FEN} from "@shared/lib/chessboard";
-import {ContentTemplate} from "@shared/ui/templates";
+import {MainTemplate} from "@shared/ui/templates";
 import {
   CompletedMatch,
   MatchClock,
@@ -57,10 +60,6 @@ const Chess = typeof ChessJS === "function" ? ChessJS : ChessJS.Chess;
 
 dayjs.locale("es");
 dayjs.extend(duration);
-
-const promptPiecePromotion = () => {
-  return "q";
-};
 
 interface MatchPageParams {
   matchId: string;
@@ -79,8 +78,19 @@ export const MatchPage: React.FC = () => {
     if (!match) dispatch(matchesActions.fetchMatch({matchId}));
   }, []);
 
-  if (isPending) return <Heading>Loading! Wait a bit :)</Heading>;
-  if (isRejected) return <Heading>Oops. Something went wrong :(</Heading>;
+  if (isPending)
+    return (
+      <Center w="full" h="100vh">
+        <Heading>Wait a bit :)</Heading>
+      </Center>
+    );
+
+  if (isRejected)
+    return (
+      <Center w="full" h="100vh">
+        <Heading>Wait a bit :)</Heading>
+      </Center>
+    );
 
   if (!match) return null;
 
@@ -108,6 +118,8 @@ interface MessageState {
   isSystem: boolean;
 }
 
+let promotionPiece: PromotionPiece | null = null;
+
 const CurrentMatch: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -123,6 +135,12 @@ const CurrentMatch: React.FC = () => {
     React.useState<boolean>(false);
   const [isInQueue, setIsInQueue] = React.useState(false);
   const [hasOfferedDraw, setHasOfferedDraw] = React.useState(false);
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = React.useState(false);
+
+  const [pendingMove, setPendingMove] = React.useState<{
+    orig: Key;
+    dest: Key;
+  } | null>();
 
   const [text, setText] = React.useState("");
 
@@ -177,15 +195,6 @@ const CurrentMatch: React.FC = () => {
         });
 
         return dests;
-      };
-
-      const role = (promotion: PromotionPiece): Role => {
-        if (promotion === "q") return "queen";
-        else if (promotion === "n") return "knight";
-        else if (promotion === "b") return "bishop";
-        else if (promotion === "r") return "rook";
-
-        return "queen";
       };
 
       const moves = () => {
@@ -268,16 +277,16 @@ const CurrentMatch: React.FC = () => {
               .filter((move) => move.flags.includes("p"))
               .some((move) => move.to === dest);
 
-            const promotion = (isPromotion &&
-              (await promptPiecePromotion())) as PromotionPiece;
-
             const move = engine.move({
               from: orig as Square,
               to: dest as Square,
-              promotion,
+              promotion: isPromotion ? "q" : undefined,
             });
 
             if (!move) return;
+
+            setPendingMove(null);
+            promotionPiece = null;
 
             engine.set_comment("");
 
@@ -285,7 +294,7 @@ const CurrentMatch: React.FC = () => {
               const map: PiecesDiff = new Map();
 
               map.set(dest, {
-                role: role(promotion),
+                role: "queen",
                 promoted: true,
                 color: current,
               });
@@ -453,10 +462,12 @@ const CurrentMatch: React.FC = () => {
   );
 
   React.useEffect(() => {
+    promotionPiece = null;
     setIsInQueue(false);
     setMessages([]);
     setIsDrawOfferValid(false);
     setResult(null);
+    setPendingMove(null);
     setHasOfferedDraw(false);
     setText("");
     setClock((clock) => ({
@@ -492,6 +503,16 @@ const CurrentMatch: React.FC = () => {
   const isActualPosition =
     !(history.length !== 0) || history[history.length - 1].startsWith(position);
   const isFirstPosition = INITIAL_FEN.startsWith(position);
+
+  const handlePromotionChoose = (piece: PromotionPiece) => {
+    promotionPiece = piece;
+
+    console.log(promotionPiece);
+
+    cgApi!.move(pendingMove!.orig, pendingMove!.dest);
+
+    setIsPromotionModalOpen(false);
+  };
 
   const handlePrevMoveClick = () => {
     if (!cgApi || isFirstPosition) return;
@@ -641,19 +662,28 @@ const CurrentMatch: React.FC = () => {
   const bottom = isReversed ? black : white;
 
   return (
-    <ContentTemplate>
-      <Container maxW="full" h="full">
+    <MainTemplate>
+      <Container maxW="full" h={["full", null, null, null, "100vh"]}>
         <Center w="full" h="full">
-          <HStack w="full" h="95vh" justifyContent="center" spacing={10}>
+          <Flex
+            w="full"
+            h={["100%", null, null, null, "95vh"]}
+            flexDirection={["column", null, null, null, "row"]}
+            alignItems={["center", null, null, null, "normal"]}
+            justifyContent="center"
+          >
             <Flex
-              w={400}
+              w={["100%", null, null, null, "400px"]}
               h="full"
               flexDirection="column"
               justifyContent="space-between"
+              order={[3, null, null, null, "initial"]}
+              mt={[6, null, null, null, 0]}
             >
               <Flex
                 w="full"
                 h="45%"
+                display={["none", null, null, null, "flex"]}
                 flexDirection="column"
                 bg="primary"
                 borderRadius="lg"
@@ -830,6 +860,7 @@ const CurrentMatch: React.FC = () => {
                     flexDirection="row"
                     justifyContent="center"
                     mb={6}
+                    mt={[10, null, null, null, 0]}
                   >
                     <Flex
                       onClick={handleDrawOfferDeclineClick}
@@ -904,6 +935,7 @@ const CurrentMatch: React.FC = () => {
                   justifyContent="space-between"
                   bg="primary"
                   borderRadius="lg"
+                  mt={[6, null, null, null, 0]}
                 >
                   <VStack
                     w="full"
@@ -980,10 +1012,68 @@ const CurrentMatch: React.FC = () => {
               </Flex>
             </Flex>
 
-            <Box w="95vh" h="95vh" ref={groundRef} />
+            {player && (
+              <Modal
+                onClose={() => setIsPromotionModalOpen(false)}
+                isOpen={isPromotionModalOpen}
+              >
+                <ModalOverlay />
+                <ModalContent w="250px" h="250px" bg="secondary">
+                  <Flex
+                    w="full"
+                    h="full"
+                    flexDirection="column"
+                    justifyContent="center"
+                    alignItems="center"
+                  >
+                    <Flex>
+                      <Box
+                        w="100px"
+                        h="100px"
+                        onClick={() => handlePromotionChoose("q")}
+                        className={`${player.side} queen`}
+                        backgroundSize="cover"
+                      />
+                      <Box
+                        w="100px"
+                        h="100px"
+                        onClick={() => handlePromotionChoose("r")}
+                        className={`${player.side} rook`}
+                        backgroundSize="cover"
+                      />
+                    </Flex>
+
+                    <Flex>
+                      <Box
+                        w="100px"
+                        h="100px"
+                        onClick={() => handlePromotionChoose("n")}
+                        className={`${player.side} knight`}
+                        backgroundSize="cover"
+                      />
+                      <Box
+                        w="100px"
+                        h="100px"
+                        onClick={() => handlePromotionChoose("b")}
+                        className={`${player.side} bishop`}
+                        backgroundSize="cover"
+                      />
+                    </Flex>
+                  </Flex>
+                </ModalContent>
+              </Modal>
+            )}
+
+            <Box
+              w={["100%", null, null, "95vh"]}
+              mx={[0, null, null, null, 10]}
+              my={[10, null, null, null, 0]}
+            >
+              <Box h="0" paddingBottom="100%" ref={groundRef} />
+            </Box>
 
             <VStack
-              w={400}
+              w={["100%", null, null, null, "400px"]}
               h="full"
               flexDirection="column"
               justifyContent="center"
@@ -1029,17 +1119,23 @@ const CurrentMatch: React.FC = () => {
               >
                 <HStack alignItems="center" spacing={3}>
                   <Avatar
-                    src="https://bit.ly/3HgzhZf"
-                    sx={{
-                      borderRadius: 0,
-                      ".chakra-avatar__img": {
-                        borderRadius: 0,
-                      },
-                    }}
+                    colors={[
+                      "#EBE5B2",
+                      "#F6F3C2",
+                      "#F7C69F",
+                      "#F89B7E",
+                      "#B5A28B",
+                    ]}
+                    size={50}
+                    variant="beam"
+                    name={top.user.username}
+                    square={true}
                   />
-                  <Text>
-                    {top.user.username} ({top.rating})
-                  </Text>
+                  <Link to={`/@/${top.user.username}`}>
+                    <Text>
+                      {top.user.username} ({top.rating})
+                    </Text>
+                  </Link>
 
                   {result && (
                     <Text
@@ -1080,17 +1176,24 @@ const CurrentMatch: React.FC = () => {
               >
                 <HStack alignItems="center" spacing={3}>
                   <Avatar
-                    src="https://bit.ly/3HgzhZf"
-                    sx={{
-                      borderRadius: 0,
-                      ".chakra-avatar__img": {
-                        borderRadius: 0,
-                      },
-                    }}
+                    colors={[
+                      "#EBE5B2",
+                      "#F6F3C2",
+                      "#F7C69F",
+                      "#F89B7E",
+                      "#B5A28B",
+                    ]}
+                    size={50}
+                    variant="beam"
+                    name={bottom.user.username}
+                    square={true}
                   />
-                  <Text>
-                    {bottom.user.username} ({bottom.rating})
-                  </Text>
+
+                  <Link to={`/@/${bottom.user.username}`}>
+                    <Text>
+                      {bottom.user.username} ({bottom.rating})
+                    </Text>
+                  </Link>
 
                   {result && (
                     <Text
@@ -1152,10 +1255,10 @@ const CurrentMatch: React.FC = () => {
                 </Text>
               </Flex>
             </VStack>
-          </HStack>
+          </Flex>
         </Center>
       </Container>
-    </ContentTemplate>
+    </MainTemplate>
   );
 };
 
@@ -1267,6 +1370,7 @@ const FinishedMatch: React.FC = () => {
       fen: hist.fen,
       viewOnly: false,
       check: engine.in_check(),
+      turnColor: current,
       movable: {
         free: false,
         color: undefined,
@@ -1296,6 +1400,7 @@ const FinishedMatch: React.FC = () => {
       fen: hist.fen,
       viewOnly: false,
       check: engine.in_check(),
+      turnColor: current,
       movable: {
         free: false,
         color: undefined,
@@ -1307,13 +1412,21 @@ const FinishedMatch: React.FC = () => {
   const bottom = match.white;
 
   return (
-    <ContentTemplate>
-      <Container maxW="full" h="full">
+    <MainTemplate>
+      <Container maxW="full" h={["100%", null, null, null, "100vh"]}>
         <Center w="full" h="full">
-          <HStack w="full" h="95vh" justifyContent="center" spacing={10}>
+          <Flex
+            w="full"
+            h={["100%", null, null, null, "95vh"]}
+            flexDirection={["column", null, null, null, "row"]}
+            alignItems={["center", null, null, null, "normal"]}
+            justifyContent="center"
+          >
             <Flex
-              w={400}
+              w={["100%", null, null, null, "400px"]}
               h="full"
+              order={[3, null, null, null, "initial"]}
+              mt={[6, null, null, null, 0]}
               flexDirection="column"
               justifyContent="space-between"
             >
@@ -1321,6 +1434,7 @@ const FinishedMatch: React.FC = () => {
                 w="full"
                 h="45%"
                 flexDirection="column"
+                display={["none", null, null, null, "flex"]}
                 bg="primary"
                 borderRadius="lg"
               >
@@ -1425,7 +1539,12 @@ const FinishedMatch: React.FC = () => {
                 </HStack>
               </Flex>
 
-              <Flex w="full" h="45%" flexDirection="column">
+              <Flex
+                w="full"
+                h="45%"
+                flexDirection="column"
+                mt={[6, null, null, null, 0]}
+              >
                 <Flex
                   w="full"
                   flexDirection="column"
@@ -1479,10 +1598,16 @@ const FinishedMatch: React.FC = () => {
               </Flex>
             </Flex>
 
-            <Box w="95vh" h="95vh" ref={groundRef} />
+            <Box
+              w={["100%", null, null, "95vh"]}
+              mx={[0, null, null, null, 10]}
+              my={[10, null, null, null, 0]}
+            >
+              <Box h="0" paddingBottom="100%" ref={groundRef} />
+            </Box>
 
             <VStack
-              w={400}
+              w={["100%", null, null, null, "400px"]}
               h="full"
               flexDirection="column"
               justifyContent="center"
@@ -1524,17 +1649,23 @@ const FinishedMatch: React.FC = () => {
               >
                 <HStack alignItems="center" spacing={3}>
                   <Avatar
-                    src="https://bit.ly/3HgzhZf"
-                    sx={{
-                      borderRadius: 0,
-                      ".chakra-avatar__img": {
-                        borderRadius: 0,
-                      },
-                    }}
+                    size={50}
+                    colors={[
+                      "#EBE5B2",
+                      "#F6F3C2",
+                      "#F7C69F",
+                      "#F89B7E",
+                      "#B5A28B",
+                    ]}
+                    variant="beam"
+                    name={top.user.username}
+                    square={true}
                   />
-                  <Text>
-                    {top.user.username} ({top.rating})
-                  </Text>
+                  <Link to={`/@/${top.user.username}`}>
+                    <Text>
+                      {top.user.username} ({top.rating})
+                    </Text>
+                  </Link>
 
                   <Text
                     color={
@@ -1571,17 +1702,23 @@ const FinishedMatch: React.FC = () => {
               >
                 <HStack alignItems="center" spacing={3}>
                   <Avatar
-                    src="https://bit.ly/3HgzhZf"
-                    sx={{
-                      borderRadius: 0,
-                      ".chakra-avatar__img": {
-                        borderRadius: 0,
-                      },
-                    }}
+                    colors={[
+                      "#EBE5B2",
+                      "#F6F3C2",
+                      "#F7C69F",
+                      "#F89B7E",
+                      "#B5A28B",
+                    ]}
+                    size={50}
+                    variant="beam"
+                    name={bottom.user.username}
+                    square={true}
                   />
-                  <Text>
-                    {bottom.user.username} ({bottom.rating})
-                  </Text>
+                  <Link to={`/@/${bottom.user.username}`}>
+                    <Text>
+                      {bottom.user.username} ({bottom.rating})
+                    </Text>
+                  </Link>
 
                   <Text
                     color={
@@ -1637,9 +1774,9 @@ const FinishedMatch: React.FC = () => {
                 </Text>
               </Flex>
             </VStack>
-          </HStack>
+          </Flex>
         </Center>
       </Container>
-    </ContentTemplate>
+    </MainTemplate>
   );
 };

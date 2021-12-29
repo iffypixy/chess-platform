@@ -129,7 +129,7 @@ export const HomePage: React.FC = () => {
 
   return (
     <ContentTemplate>
-      <Container maxW="container.xl" h="full">
+      <Container maxW="container.xl" h="100vh">
         <Center w="full" h="full">
           <VStack w={[0.95, 0.9, 550]} bg="primary" borderRadius="2xl" p={5}>
             <Center

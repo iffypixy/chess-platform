@@ -32,6 +32,7 @@ export const reducer = createReducer<AuthState>(initial, {
   ) => {
     state.credentials = payload.credentials;
     state.isCredentialsFetchPending = false;
+    state.isAuthenticated = true;
   },
 
   [actions.fetchCredentials.rejected.type]: (state) => {
@@ -48,6 +49,7 @@ export const reducer = createReducer<AuthState>(initial, {
   ) => {
     state.credentials = payload.credentials;
     state.isLoginPending = false;
+    state.isAuthenticated = true;
   },
 
   [actions.login.rejected.type]: (state) => {
@@ -64,6 +66,7 @@ export const reducer = createReducer<AuthState>(initial, {
   ) => {
     state.credentials = payload.credentials;
     state.isRegisterPending = false;
+    state.isAuthenticated = true;
   },
 
   [actions.register.rejected.type]: (state) => {

@@ -1,5 +1,6 @@
 import * as React from "react";
 import {useSelector} from "react-redux";
+import {Center, Heading} from "@chakra-ui/react";
 
 import {useDispatch} from "@shared/lib/store";
 import * as actions from "@features/auth/actions";
@@ -21,7 +22,12 @@ export const CredentialsLoader: React.FC<CredentialsLoaderProps> = ({
     if (!isAuthenticated) dispatch(actions.fetchCredentials());
   }, []);
 
-  if (isFetching) return null;
+  if (isFetching)
+    return (
+      <Center w="full" h="100vh">
+        <Heading>Wait a bit :)</Heading>
+      </Center>
+    );
 
   return children;
 };
