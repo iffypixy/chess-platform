@@ -1,4 +1,4 @@
-const ORIGIN = "http://localhost:3000";
+const ORIGIN = "https://jrrrt.tech";
 
 export const constants = {
   ORIGIN,
