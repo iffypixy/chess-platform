@@ -97,7 +97,7 @@ export interface UserPublicData {
   bullet: ControlMode;
   blitz: ControlMode;
   rapid: ControlMode;
-  classic: ControlMode;
+  classical: ControlMode;
 }
 
 export interface UserData {
@@ -107,7 +107,7 @@ export interface UserData {
   bullet: ControlMode;
   blitz: ControlMode;
   rapid: ControlMode;
-  classic: ControlMode;
+  classical: ControlMode;
 }
 
 export type UserDocument = UserData &
@@ -116,9 +116,9 @@ export type UserDocument = UserData &
   };
 
 UserSchema.virtual("public").get(function (this: UserDocument): UserPublicData {
-  const {_id, username, bullet, blitz, rapid, classic} = this;
+  const {_id, username, bullet, blitz, rapid, classical} = this;
 
-  return {id: _id, username, bullet, blitz, rapid, classic};
+  return {id: _id, username, bullet, blitz, rapid, classical};
 });
 
 export interface UserCreationAttributes {

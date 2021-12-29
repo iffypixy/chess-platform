@@ -92,6 +92,8 @@ export interface MatchPublicData {
   black: MatchPlayerPublicData;
   winner: MatchPlayerPublicData | null;
   pgn: string;
+  fen: string;
+  sid: string;
   type: MatchType;
   control: MatchControl;
 }
@@ -113,13 +115,15 @@ export interface MatchCreationAttributes {
 }
 
 MatchSchema.virtual("public").get(function (this: MatchDocument): MatchPublicData {
-  const {_id, white, black, winner, pgn, type, control} = this;
+  const {_id, white, black, winner, pgn, type, control, fen, sid} = this;
 
   return {
     id: _id,
     white: white.public,
     black: black.public,
     winner: winner && winner.public,
+    sid,
+    fen,
     pgn,
     type,
     control,

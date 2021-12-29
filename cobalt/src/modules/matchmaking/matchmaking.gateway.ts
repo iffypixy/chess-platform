@@ -9,7 +9,7 @@ import {
 } from "@nestjs/websockets";
 import {Types} from "mongoose";
 import {Server, Socket} from "socket.io";
-import {Chess} from "chess.js";
+import * as ChessJS from "chess.js";
 import {nanoid} from "nanoid";
 
 import {ControlMode, UserData, UserService} from "@modules/user";
@@ -32,6 +32,8 @@ import {
   SpectateMatchDto,
   SendMessageDto,
 } from "./dtos/gateways";
+
+const Chess = typeof ChessJS === "function" ? ChessJS : ChessJS.Chess;
 
 const serverEvents = {
   JOIN_QUEUE: "join-queue",
@@ -343,13 +345,15 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     if (!isParticipant) return acknowledgment.error({message: "You are not participant"});
 
-    const engine = new Chess(match.fen);
+    const engine = new Chess();
 
+    match.fen && engine.load(match.fen);
     match.pgn && engine.load_pgn(match.pgn);
 
     const turn = () => (engine.turn() === "w" ? "white" : "black");
 
     const current = turn();
+
     const isTurn = (current === "white" && isWhite) || (current === "black" && isBlack);
 
     if (!isTurn) return acknowledgment.error({message: "It is not your turn to make move"});

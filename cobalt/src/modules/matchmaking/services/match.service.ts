@@ -22,4 +22,8 @@ export class MatchService {
   create(options: MatchCreationAttributes): Promise<MatchDocument> {
     return this.matchModel.create(options);
   }
+
+  find(filter: FilterQuery<MatchDocument>, options?: QueryOptions) {
+    return this.matchModel.find(filter, options);
+  }
 }

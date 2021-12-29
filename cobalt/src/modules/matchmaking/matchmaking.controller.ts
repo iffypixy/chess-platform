@@ -3,13 +3,17 @@ import {Chess} from "chess.js";
 
 import {UserService} from "@modules/user";
 import {redis} from "@lib/redis";
-import {MatchService} from "./services";
+import {MatchPlayerService, MatchService} from "./services";
 import {MatchPublicData} from "./schemas";
 import {MatchEntity, MatchEntityPublic} from "./typings";
 
 @Controller("matches")
 export class MatchmakingController {
-  constructor(private readonly matchService: MatchService, private readonly userService: UserService) {}
+  constructor(
+    private readonly matchService: MatchService,
+    private readonly userService: UserService,
+    private readonly matchPlayerService: MatchPlayerService,
+  ) {}
 
   @Get("random")
   async getRandom(): Promise<{match: MatchPublicData}> {
@@ -21,6 +25,47 @@ export class MatchmakingController {
     return {
       match: match.public,
     };
+  }
+
+  @Get("users/:username")
+  async getUsersMatches(@Param("username") username: string): Promise<{matches: MatchPublicData[]}> {
+    const user = await this.userService.findByUsername(username);
+
+    if (!user) throw new BadRequestException("No user found");
+
+    const players = await this.matchPlayerService.find({user: user._id}).exec();
+
+    const matches = [];
+
+    for (let i = 0; i < players.length; i++) {
+      const match = await this.matchService
+        .findOne({$or: [{white: players[i]._id}, {black: players[i]._id}]})
+        .populate([
+          {
+            path: "white",
+            populate: {
+              path: "user",
+            },
+          },
+          {
+            path: "black",
+            populate: {
+              path: "user",
+            },
+          },
+          {
+            path: "winner",
+            populate: {
+              path: "user",
+            },
+          },
+        ])
+        .exec();
+
+      if (!!match) matches.push(match.public);
+    }
+
+    return {matches: matches.reverse()};
   }
 
   @Get(":matchId")
