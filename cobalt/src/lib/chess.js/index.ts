@@ -1,4 +1,6 @@
-export const Chess = function (fen) {
+// @ts-nocheck
+
+export const Chess = function (fen?: string): void {
   var BLACK = "b";
   var WHITE = "w";
 

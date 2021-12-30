@@ -14,8 +14,8 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MatchmakingController = void 0;
 const common_1 = require("@nestjs/common");
-const chess_js_1 = require("chess.js");
 const user_1 = require("../user");
+const chess_js_1 = require("../../lib/chess.js");
 const redis_1 = require("../../lib/redis");
 const services_1 = require("./services");
 let MatchmakingController = class MatchmakingController {

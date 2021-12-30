@@ -1,3 +1,4 @@
+import {serverEvents} from "@shared/lib/socket";
 import {emit} from "./request";
 
 export interface JoinQueueData {
@@ -11,8 +12,16 @@ export interface JoinQueueResponse {
 }
 
 const joinQueue = (data: JoinQueueData): Promise<JoinQueueResponse> =>
-  emit({event: "join-queue", data});
+  emit({event: serverEvents.JOIN_QUEUE, data});
+
+export interface DisjoinQueueData {}
+
+export interface DisjoinQueueResponse {}
+
+const disjoinQueue = (data: DisjoinQueueData): Promise<DisjoinQueueResponse> =>
+  emit({event: serverEvents.DISJOIN_QUEUE, data});
 
 export const matchmakingApi = {
   joinQueue,
+  disjoinQueue,
 };

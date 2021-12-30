@@ -3,7 +3,7 @@ import { Server, Socket } from "socket.io";
 import { UserService } from "@modules/user";
 import { SocketIoService, Acknowledgment } from "@lib/socket.io";
 import { MatchService, MatchPlayerService } from "./services";
-import { AcceptDrawDto, DeclineDrawDto, JoinQueueDto, MakeMoveDto, ResignDto, OfferDrawDto, PremoveDto, RemovePremoveDto, SpectateMatchDto, SendMessageDto } from "./dtos/gateways";
+import { AcceptDrawDto, DeclineDrawDto, JoinQueueDto, MakeMoveDto, ResignDto, OfferDrawDto, PremoveDto, RemovePremoveDto, SpectateMatchDto, SendMessageDto, DisjoinQueue } from "./dtos/gateways";
 export declare class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
     private readonly userService;
     private readonly matchService;
@@ -15,6 +15,7 @@ export declare class MatchmakingGateway implements OnGatewayInit, OnGatewayDisco
     afterInit(): void;
     handleDisconnect(socket: Socket): Promise<void>;
     joinQueue(socket: Socket, body: JoinQueueDto): Promise<Acknowledgment>;
+    disjoinQueue(socket: Socket, body: DisjoinQueue): Promise<Acknowledgment>;
     makeMove(socket: Socket, body: MakeMoveDto): Promise<Acknowledgment>;
     resign(socket: Socket, body: ResignDto): Promise<Acknowledgment>;
     offerDraw(socket: Socket, body: OfferDrawDto): Promise<Acknowledgment>;

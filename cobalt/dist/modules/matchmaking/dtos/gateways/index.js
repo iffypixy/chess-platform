@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SendMessageDto = exports.SpectateMatchDto = exports.RemovePremoveDto = exports.PremoveDto = exports.OfferDrawDto = exports.DeclineDrawDto = exports.AcceptDrawDto = exports.ResignDto = exports.JoinQueueDto = exports.MakeMoveDto = void 0;
+exports.DisjoinQueue = exports.SendMessageDto = exports.SpectateMatchDto = exports.RemovePremoveDto = exports.PremoveDto = exports.OfferDrawDto = exports.DeclineDrawDto = exports.AcceptDrawDto = exports.ResignDto = exports.JoinQueueDto = exports.MakeMoveDto = void 0;
 var make_move_dto_1 = require("./make-move.dto");
 Object.defineProperty(exports, "MakeMoveDto", { enumerable: true, get: function () { return make_move_dto_1.MakeMoveDto; } });
 var join_queue_dto_1 = require("./join-queue.dto");
@@ -21,4 +21,6 @@ var spectate_match_dto_1 = require("./spectate-match.dto");
 Object.defineProperty(exports, "SpectateMatchDto", { enumerable: true, get: function () { return spectate_match_dto_1.SpectateMatchDto; } });
 var send_message_dto_1 = require("./send-message.dto");
 Object.defineProperty(exports, "SendMessageDto", { enumerable: true, get: function () { return send_message_dto_1.SendMessageDto; } });
+var disjoin_queue_dto_1 = require("./disjoin-queue.dto");
+Object.defineProperty(exports, "DisjoinQueue", { enumerable: true, get: function () { return disjoin_queue_dto_1.DisjoinQueue; } });
 //# sourceMappingURL=index.js.map

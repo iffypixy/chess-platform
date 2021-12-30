@@ -15,6 +15,7 @@ export const serverEvents = {
   REMOVE_PREMOVE: "remove-premove",
   SPECTATE_MATCH: "spectate-match",
   SEND_MESSAGE: "send-message",
+  DISJOIN_QUEUE: "disjoin-queue",
 };
 
 export const clientEvents = {

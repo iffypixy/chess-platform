@@ -1,7 +1,7 @@
 import {BadRequestException, Controller, Get, Param} from "@nestjs/common";
-import {Chess} from "chess.js";
 
 import {UserService} from "@modules/user";
+import {Chess} from "@lib/chess.js";
 import {redis} from "@lib/redis";
 import {MatchPlayerService, MatchService} from "./services";
 import {MatchPublicData} from "./schemas";

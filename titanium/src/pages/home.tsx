@@ -179,13 +179,16 @@ export const HomePage: React.FC = () => {
                           disabled={false}
                           isLoading={isCurrent}
                           onClick={() => {
-                            dispatch(
-                              matchmakingActions.joinQueue({
-                                delay: delay * 1000,
-                                increment: increment * 1000,
-                                time: time * 60 * 1000,
-                              })
-                            );
+                            if (!isCurrent)
+                              dispatch(
+                                matchmakingActions.joinQueue({
+                                  delay: delay * 1000,
+                                  increment: increment * 1000,
+                                  time: time * 60 * 1000,
+                                })
+                              );
+                            else if (isCurrent)
+                              dispatch(matchmakingActions.disjoinQueue({}));
 
                             dispatch(
                               matchmakingActions.setQueuedControl({

@@ -9,13 +9,13 @@ import {
 } from "@nestjs/websockets";
 import {Types} from "mongoose";
 import {Server, Socket} from "socket.io";
-import * as ChessJS from "chess.js";
 import {nanoid} from "nanoid";
 
 import {ControlMode, UserData, UserService} from "@modules/user";
 import {constants} from "@lib/constants";
 import {acknowledgment, SocketIoService, Acknowledgment} from "@lib/socket.io";
 import {redis} from "@lib/redis";
+import {Chess} from "@lib/chess.js";
 import {MatchControl, MatchType, MatchEntity} from "./typings";
 import {MatchService, MatchPlayerService} from "./services";
 import {MATCHMAKING, MATCH_TYPES, NOTATION} from "./lib/constants";
@@ -31,9 +31,8 @@ import {
   RemovePremoveDto,
   SpectateMatchDto,
   SendMessageDto,
+  DisjoinQueue,
 } from "./dtos/gateways";
-
-const Chess = typeof ChessJS === "function" ? ChessJS : ChessJS.Chess;
 
 const serverEvents = {
   JOIN_QUEUE: "join-queue",
@@ -46,6 +45,7 @@ const serverEvents = {
   REMOVE_PREMOVE: "remove-premove",
   SPECTATE_MATCH: "spectate-match",
   SEND_MESSAGE: "send-message",
+  DISJOIN_QUEUE: "disjoin-queue",
 };
 
 const clientEvents = {
@@ -320,6 +320,21 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
       start: now,
       rating: mode.rating,
     });
+
+    redis.set("queue", JSON.stringify(queue));
+
+    return acknowledgment.ok();
+  }
+
+  @SubscribeMessage(serverEvents.DISJOIN_QUEUE)
+  async disjoinQueue(@ConnectedSocket() socket: Socket, @MessageBody() body: DisjoinQueue): Promise<Acknowledgment> {
+    const {user} = socket.request.session;
+
+    const jsons = await redis.get("queue");
+
+    let queue = ((JSON.parse(jsons) || []) as QueueEntity[]).filter(Boolean);
+
+    queue = queue.filter(({user: {_id}}) => String(_id) !== String(user._id));
 
     redis.set("queue", JSON.stringify(queue));
 

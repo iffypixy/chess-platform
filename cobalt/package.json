@@ -25,7 +25,6 @@
     "@nestjs/websockets": "^8.0.11",
     "@socket.io/redis-adapter": "^7.0.1",
     "bcryptjs": "^2.4.3",
-    "chess.js": "^0.12.0",
     "class-transformer": "^0.4.0",
     "class-validator": "^0.13.1",
     "connect-redis": "^6.0.0",

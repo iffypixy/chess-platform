@@ -16,17 +16,16 @@ exports.MatchmakingGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
 const mongoose_1 = require("mongoose");
 const socket_io_1 = require("socket.io");
-const ChessJS = require("chess.js");
 const nanoid_1 = require("nanoid");
 const user_1 = require("../user");
 const constants_1 = require("../../lib/constants");
 const socket_io_2 = require("../../lib/socket.io");
 const redis_1 = require("../../lib/redis");
+const chess_js_1 = require("../../lib/chess.js");
 const services_1 = require("./services");
 const constants_2 = require("./lib/constants");
 const elo_1 = require("./lib/elo");
 const gateways_1 = require("./dtos/gateways");
-const Chess = typeof ChessJS === "function" ? ChessJS : ChessJS.Chess;
 const serverEvents = {
     JOIN_QUEUE: "join-queue",
     MAKE_MOVE: "make-move",
@@ -38,6 +37,7 @@ const serverEvents = {
     REMOVE_PREMOVE: "remove-premove",
     SPECTATE_MATCH: "spectate-match",
     SEND_MESSAGE: "send-message",
+    DISJOIN_QUEUE: "disjoin-queue",
 };
 const clientEvents = {
     MOVE: "move",
@@ -245,6 +245,14 @@ let MatchmakingGateway = class MatchmakingGateway {
         redis_1.redis.set("queue", JSON.stringify(queue));
         return socket_io_2.acknowledgment.ok();
     }
+    async disjoinQueue(socket, body) {
+        const { user } = socket.request.session;
+        const jsons = await redis_1.redis.get("queue");
+        let queue = (JSON.parse(jsons) || []).filter(Boolean);
+        queue = queue.filter(({ user: { _id } }) => String(_id) !== String(user._id));
+        redis_1.redis.set("queue", JSON.stringify(queue));
+        return socket_io_2.acknowledgment.ok();
+    }
     async makeMove(socket, body) {
         const now = Date.now();
         const { user } = socket.request.session;
@@ -257,7 +265,7 @@ let MatchmakingGateway = class MatchmakingGateway {
         const isParticipant = isWhite || isBlack;
         if (!isParticipant)
             return socket_io_2.acknowledgment.error({ message: "You are not participant" });
-        const engine = new Chess();
+        const engine = new chess_js_1.Chess();
         match.fen && engine.load(match.fen);
         match.pgn && engine.load_pgn(match.pgn);
         const turn = () => (engine.turn() === "w" ? "white" : "black");
@@ -484,7 +492,7 @@ let MatchmakingGateway = class MatchmakingGateway {
             result: isBlack ? "lose" : "victory",
             side: "black",
         });
-        const engine = new Chess(match.fen);
+        const engine = new chess_js_1.Chess(match.fen);
         match.pgn && engine.load_pgn(match.pgn);
         await this.matchService.create({
             white,
@@ -582,7 +590,7 @@ let MatchmakingGateway = class MatchmakingGateway {
             result: "draw",
             side: "black",
         });
-        const engine = new Chess(match.fen);
+        const engine = new chess_js_1.Chess(match.fen);
         match.pgn && engine.load_pgn(match.pgn);
         await this.matchService.create({
             white,
@@ -651,7 +659,7 @@ let MatchmakingGateway = class MatchmakingGateway {
         const isParticipant = isWhite || isBlack;
         if (!isParticipant)
             return socket_io_2.acknowledgment.error({ message: "You are not participant" });
-        const engine = new Chess(match.fen);
+        const engine = new chess_js_1.Chess(match.fen);
         const current = engine.turn() === "w" ? "white" : "black";
         const isTurn = (current === "white" && isWhite) || (current === "black" && isBlack);
         if (isTurn)
@@ -675,7 +683,7 @@ let MatchmakingGateway = class MatchmakingGateway {
         const isParticipant = isWhite || isBlack;
         if (!isParticipant)
             return socket_io_2.acknowledgment.error({ message: "You are not participant" });
-        const engine = new Chess(match.fen);
+        const engine = new chess_js_1.Chess(match.fen);
         const current = engine.turn() === "w" ? "white" : "black";
         const isTurn = (current === "white" && isWhite) || (current === "black" && isBlack);
         if (isTurn)
@@ -714,6 +722,14 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket, gateways_1.JoinQueueDto]),
     __metadata("design:returntype", Promise)
 ], MatchmakingGateway.prototype, "joinQueue", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)(serverEvents.DISJOIN_QUEUE),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, gateways_1.DisjoinQueue]),
+    __metadata("design:returntype", Promise)
+], MatchmakingGateway.prototype, "disjoinQueue", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)(serverEvents.MAKE_MOVE),
     __param(0, (0, websockets_1.ConnectedSocket)()),

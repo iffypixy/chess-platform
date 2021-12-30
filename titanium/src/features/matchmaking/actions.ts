@@ -5,6 +5,8 @@ import {
   matchmakingApi,
   JoinQueueResponse,
   JoinQueueData,
+  DisjoinQueueResponse,
+  DisjoinQueueData,
 } from "@shared/api/matchmaking";
 
 const prefix = "matchmaking";
@@ -19,6 +21,17 @@ export const joinQueue = createAsyncThunk<JoinQueuePayload, JoinQueueData>(
     return data;
   }
 );
+
+export interface DisjoinQueuePayload extends DisjoinQueueResponse {}
+
+export const disjoinQueue = createAsyncThunk<
+  DisjoinQueuePayload,
+  DisjoinQueueData
+>(`${prefix}/disjoinQueue`, async (args) => {
+  const data = await matchmakingApi.disjoinQueue(args);
+
+  return data;
+});
 
 export interface SetQueuedControlPayload {
   control: MatchControl | null;
