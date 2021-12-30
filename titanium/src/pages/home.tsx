@@ -14,7 +14,7 @@ import {matchesActions} from "@features/matches";
 import {ContentTemplate} from "@shared/ui/templates";
 import {useDispatch} from "@shared/lib/store";
 import {clientEvents, socket} from "@shared/lib/socket";
-import {MatchControl, RealMatch} from "@shared/api/matches";
+import {RealMatch} from "@shared/api/matches";
 import {Button} from "@chakra-ui/react";
 import {useSelector} from "react-redux";
 
@@ -81,34 +81,6 @@ const types = [
   },
 ];
 
-interface PanelButtonProps {
-  children: React.ReactNode;
-  handleClick: () => void;
-}
-
-const PanelButton: React.FC<PanelButtonProps> = ({children, handleClick}) => (
-  <Button
-    onClick={handleClick}
-    role="button"
-    w={0.3}
-    h={50}
-    color="text.secondary"
-    fontSize="xl"
-    bg="tertiary"
-    borderRadius="xl"
-    cursor="pointer"
-    transitionProperty="background"
-    transitionTimingFunction="linear"
-    transitionDuration="0.2s"
-    _hover={{bg: "tertiary"}}
-    _active={{
-      bg: "tertiary",
-    }}
-  >
-    {children}
-  </Button>
-);
-
 export const HomePage: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -118,6 +90,7 @@ export const HomePage: React.FC = () => {
   React.useEffect(() => {
     socket.on(clientEvents.MATCH_FOUND, ({match}: {match: RealMatch}) => {
       dispatch(matchesActions.setMatch({match}));
+      dispatch(matchmakingActions.setQueuedControl({control: null}));
 
       navigate(`/match/${match.id}`);
     });

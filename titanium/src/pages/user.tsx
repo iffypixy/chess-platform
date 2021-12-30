@@ -32,7 +32,7 @@ export const UserPage: React.FC = () => {
   React.useEffect(() => {
     dispatch(usersActions.fetchUser({username}));
     dispatch(usersActions.fetchMatches({username}));
-  }, []);
+  }, [username]);
 
   const user = useSelector(usersSelectors.user);
   const matches = useSelector(usersSelectors.matches);
