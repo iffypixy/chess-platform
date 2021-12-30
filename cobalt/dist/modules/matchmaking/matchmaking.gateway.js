@@ -178,38 +178,32 @@ let MatchmakingGateway = class MatchmakingGateway {
                     await redis_1.redis.del(`match:${match.id}`);
                 }, match.white.clock);
                 match.clockTimeout = timeout[Symbol.toPrimitive]();
-                redis_1.redis.set(`match:${match.id}`, JSON.stringify(match)).then((res) => {
-                    if (res !== "OK")
-                        return;
-                    redis_1.redis.set("queue", JSON.stringify(queue)).then((res) => {
-                        if (res !== "OK")
-                            return;
-                        this.server.to(match.id).emit(clientEvents.MATCH_FOUND, {
-                            match: {
-                                control,
-                                id: match.id,
-                                pgn: null,
-                                isDrawOfferValid: false,
-                                type: match.type,
-                                fen: match.fen,
-                                isReal: true,
-                                white: {
-                                    user: match.white.user.public,
-                                    rating: match.white.rating,
-                                    side: match.white.side,
-                                    clock: match.white.clock,
-                                    hasOfferedDraw: match.white.hasOfferedDraw,
-                                },
-                                black: {
-                                    user: match.black.user.public,
-                                    rating: match.black.rating,
-                                    side: match.black.side,
-                                    clock: match.black.clock,
-                                    hasOfferedDraw: match.black.hasOfferedDraw,
-                                },
-                            },
-                        });
-                    });
+                redis_1.redis.set(`match:${match.id}`, JSON.stringify(match));
+                redis_1.redis.set("queue", JSON.stringify(queue));
+                this.server.to(match.id).emit(clientEvents.MATCH_FOUND, {
+                    match: {
+                        control,
+                        id: match.id,
+                        pgn: null,
+                        isDrawOfferValid: false,
+                        type: match.type,
+                        fen: match.fen,
+                        isReal: true,
+                        white: {
+                            user: match.white.user.public,
+                            rating: match.white.rating,
+                            side: match.white.side,
+                            clock: match.white.clock,
+                            hasOfferedDraw: match.white.hasOfferedDraw,
+                        },
+                        black: {
+                            user: match.black.user.public,
+                            rating: match.black.rating,
+                            side: match.black.side,
+                            clock: match.black.clock,
+                            hasOfferedDraw: match.black.hasOfferedDraw,
+                        },
+                    },
                 });
             });
             setTimeout(handler, 1000);
