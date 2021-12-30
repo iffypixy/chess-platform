@@ -126,6 +126,7 @@ let MatchmakingGateway = class MatchmakingGateway {
                 const whites = this.service.getSocketsByUserId(user._id);
                 const blacks = this.service.getSocketsByUserId(opponent.user._id);
                 const sockets = [...blacks, ...whites];
+                console.log(whites, blacks, sockets);
                 sockets.forEach((socket) => socket.join(match.id));
                 const timeout = setTimeout(async () => {
                     const result = elo_1.elo.calculateVictory({ winner: opponent.rating, loser: rating });

@@ -170,6 +170,8 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
 
         const sockets = [...blacks, ...whites];
 
+        console.log(whites, blacks, sockets);
+
         sockets.forEach((socket) => socket.join(match.id));
 
         const timeout = setTimeout(async () => {
