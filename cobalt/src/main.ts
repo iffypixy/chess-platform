@@ -20,7 +20,6 @@ async function bootstrap() {
 
   app.use(session());
   app.useGlobalPipes(new ValidationPipe({transform: true}));
-  app.useWebSocketAdapter(new RedisIoAdapter(app));
 
   app.setGlobalPrefix("api");
 

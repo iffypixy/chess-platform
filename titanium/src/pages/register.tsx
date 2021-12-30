@@ -156,7 +156,7 @@ export const RegisterPage: React.FC = () => {
               alignItems="flex-start"
             >
               <Text color="text.secondary" fontSize="sm">
-                <Link to="/login">Have an account already?</Link>
+                <Link to="/login">Do you have an account already?</Link>
               </Text>
               <Button
                 type="submit"

@@ -10,6 +10,7 @@ import {
   RegisterResponse,
   RegisterResponseError,
 } from "@shared/api/auth";
+import {socket} from "@shared/lib/socket";
 
 const prefix = "auth";
 
@@ -19,6 +20,8 @@ export const login = createAsyncThunk<LoginPayload, LoginData>(
   `${prefix}/login`,
   async (args) => {
     const {data} = await authApi.login(args);
+
+    socket.connect();
 
     return data;
   }
@@ -31,6 +34,8 @@ export const register = createAsyncThunk<RegisterPayload, RegisterData>(
   async (args, {rejectWithValue}) => {
     try {
       const {data} = await authApi.register(args);
+
+      socket.connect();
 
       return data;
     } catch (error) {
@@ -54,6 +59,8 @@ export const fetchCredentials = createAsyncThunk<FetchCredentialsPayload>(
   `${prefix}/fetchCredentials`,
   async () => {
     const {data} = await authApi.getCredentials();
+
+    socket.connect();
 
     return data;
   }

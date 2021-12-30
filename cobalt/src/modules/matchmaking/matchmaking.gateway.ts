@@ -293,6 +293,8 @@ export class MatchmakingGateway implements OnGatewayInit, OnGatewayDisconnect {
   async joinQueue(@ConnectedSocket() socket: Socket, @MessageBody() body: JoinQueueDto): Promise<Acknowledgment> {
     const now = Date.now();
 
+    console.log(socket.request.session);
+
     const {user} = socket.request.session;
 
     const actual = await this.userService.findById(Types.ObjectId(String(user._id)));

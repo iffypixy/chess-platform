@@ -72,16 +72,4 @@ export const reducer = createReducer<AuthState>(initial, {
   [actions.register.rejected.type]: (state) => {
     state.isRegisterPending = false;
   },
-
-  [actions.login.pending.type]: (state) => {
-    state.isLoginPending = true;
-  },
-
-  [actions.login.fulfilled.type]: (state) => {
-    state.isLoginPending = false;
-  },
-
-  [actions.login.rejected.type]: (state) => {
-    state.isLoginPending = false;
-  },
 });

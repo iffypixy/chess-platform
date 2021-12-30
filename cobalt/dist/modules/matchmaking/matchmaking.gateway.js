@@ -220,6 +220,7 @@ let MatchmakingGateway = class MatchmakingGateway {
     }
     async joinQueue(socket, body) {
         const now = Date.now();
+        console.log(socket.request.session);
         const { user } = socket.request.session;
         const actual = await this.userService.findById(mongoose_1.Types.ObjectId(String(user._id)));
         const control = {

@@ -17,8 +17,10 @@ import {Link} from "react-router-dom";
 import {useForm} from "react-hook-form";
 import * as yup from "yup";
 import {yupResolver} from "@hookform/resolvers/yup";
+import {useSelector} from "react-redux";
+import {unwrapResult} from "@reduxjs/toolkit";
 
-import {authActions} from "@features/auth";
+import {authActions, authSelectors} from "@features/auth";
 import {useDispatch} from "@shared/lib/store";
 import {MainTemplate} from "@shared/ui/templates";
 
@@ -35,11 +37,9 @@ interface LoginForm {
 export const LoginPage: React.FC = () => {
   const dispatch = useDispatch();
 
-  const {
-    handleSubmit,
-    formState: {isSubmitting, errors},
-    register,
-  } = useForm<LoginForm>({
+  const [errors, setErrors] = React.useState<string[]>([]);
+
+  const {handleSubmit, formState, register} = useForm<LoginForm>({
     mode: "onChange",
     resolver: yupResolver(schema),
     defaultValues: {
@@ -48,8 +48,12 @@ export const LoginPage: React.FC = () => {
     },
   });
 
+  const isPending = useSelector(authSelectors.isLoginPending);
+
   const onSubmit = async (values: LoginForm) => {
-    await dispatch(authActions.login(values));
+    dispatch(authActions.login(values))
+      .then(unwrapResult)
+      .catch(() => setErrors(["Invalid credentials"]));
   };
 
   return (
@@ -62,7 +66,20 @@ export const LoginPage: React.FC = () => {
             </Heading>
 
             <VStack w="full" spacing={4}>
-              <FormControl id="username" isInvalid={!!errors.username}>
+              {errors.length > 0 && (
+                <VStack w="full" alignItems="flex-start">
+                  {errors.map((error, idx) => (
+                    <Text key={idx} fontSize="sm" color="error">
+                      {error}
+                    </Text>
+                  ))}
+                </VStack>
+              )}
+
+              <FormControl
+                id="username"
+                isInvalid={!!formState.errors.username}
+              >
                 <FormLabel
                   htmlFor="username"
                   color="text.secondary"
@@ -84,14 +101,17 @@ export const LoginPage: React.FC = () => {
                     required: true,
                   })}
                 />
-                {errors.username && (
+                {formState.errors.username && (
                   <FormErrorMessage fontSize="xs">
-                    {errors.username.message}
+                    {formState.errors.username.message}
                   </FormErrorMessage>
                 )}
               </FormControl>
 
-              <FormControl id="password" isInvalid={!!errors.password}>
+              <FormControl
+                id="password"
+                isInvalid={!!formState.errors.password}
+              >
                 <FormLabel
                   htmlFor="password"
                   color="text.secondary"
@@ -113,9 +133,9 @@ export const LoginPage: React.FC = () => {
                     required: true,
                   })}
                 />
-                {errors.password && (
+                {formState.errors.password && (
                   <FormErrorMessage fontSize="xs">
-                    {errors.password.message}
+                    {formState.errors.password.message}
                   </FormErrorMessage>
                 )}
               </FormControl>
@@ -127,11 +147,11 @@ export const LoginPage: React.FC = () => {
               alignItems="flex-start"
             >
               <Text color="text.secondary" fontSize="sm">
-                <Link to="/register">Have not an account yet?</Link>
+                <Link to="/register">Do not have an account yet?</Link>
               </Text>
               <Button
                 type="submit"
-                isLoading={isSubmitting}
+                isLoading={isPending}
                 w="120px"
                 bg="primary"
                 color="text.secondary"

@@ -18,7 +18,6 @@ async function bootstrap() {
     (0, session_1.setupStore)();
     app.use((0, session_1.session)());
     app.useGlobalPipes(new common_1.ValidationPipe({ transform: true }));
-    app.useWebSocketAdapter(new socket_io_1.RedisIoAdapter(app));
     app.setGlobalPrefix("api");
     await app.listen(process.env.PORT);
 }
